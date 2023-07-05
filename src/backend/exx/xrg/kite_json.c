@@ -561,7 +561,7 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 			fs->u.csv.quote = '"';
 			fs->u.csv.escape = '"';
 			*fs->u.csv.nullstr = 0;
-			fs->u.csv.header_line = false;
+			fs->u.csv.header_line = pstate->header_line;
 
 			if (pstate->delim) fs->u.csv.delim = *pstate->delim;
 			if (pstate->quote) fs->u.csv.quote = *pstate->quote;
