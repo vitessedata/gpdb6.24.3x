@@ -44,6 +44,10 @@ static void setup_schema(kite_extscan_t *ex, stringbuffer_t *strbuf) {
 		bool is_array = false;
 		ptyp = ltyp = precision = scale = 0;
 
+		if (! pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod)) {
+			elog(ERROR, "kite do not support pg type %d", attr[i]->atttypid);
+		}
+
 		pg_typ_to_xrg_typ(attr[i]->atttypid, attr[i]->atttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 
 		/*

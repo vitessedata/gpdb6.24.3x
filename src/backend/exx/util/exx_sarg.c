@@ -98,6 +98,34 @@ const char *xrg_typ_str(int16_t ptyp, int16_t ltyp) {
 	return "";
 }
 
+bool pg_typ_supported(Oid t, int32_t typmod) {
+	static Oid valid_type[] =  {BOOLOID, 1000, 
+								INT2OID, INT2ARRAYOID,
+								INT4OID, INT4ARRAYOID,
+								INT8OID, INT8ARRAYOID,
+								DATEOID, 1182,
+								TIMEOID, 1183,
+								TIMESTAMPOID, 1115,
+								TIMESTAMPTZOID, 1185,
+								FLOAT4OID, FLOAT4ARRAYOID,
+								FLOAT8OID, FLOAT8ARRAYOID,
+								CASHOID,
+								INTERVALOID, 1187,
+								NUMERICOID, 1231,
+								BPCHAROID, TEXTOID, VARCHAROID, TEXTARRAYOID, 1014, 1015};
+
+	int ntype = sizeof(valid_type) / sizeof(Oid);
+
+	for (int i = 0 ; i < ntype ; i++) {
+		if (valid_type[i] == t) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 void pg_typ_to_xrg_typ(Oid t, int32_t typmod, int16_t *ptyp, int16_t *ltyp, int16_t *precision, int16_t *scale, bool *is_array) {
 	*is_array = false;
 	switch (t) {
