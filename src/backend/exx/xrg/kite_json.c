@@ -44,10 +44,6 @@ static void setup_schema(kite_extscan_t *ex, stringbuffer_t *strbuf) {
 		bool is_array = false;
 		ptyp = ltyp = precision = scale = 0;
 
-		if (! pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod)) {
-			elog(ERROR, "kite do not support pg type %d", attr[i]->atttypid);
-		}
-
 		pg_typ_to_xrg_typ(attr[i]->atttypid, attr[i]->atttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 
 		/*
@@ -502,9 +498,25 @@ static void traverse_qual(kite_extscan_t *ex, ExprState *exprstate, stringbuffer
 int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int *fragid, int *fragcnt, kite_filespec_t *fs) {
 
 	FileScanDesc scandesc = ex->m_node->ess_ScanDesc;
+
+	// check supported data type
+	{
+		TupleDesc scan_tdesc = scan_tupdesc(ex->m_node);
+	    int ncol = scan_tdesc->natts;
+	    Form_pg_attribute *attr = scan_tdesc->attrs;
+	
+	    /* check the supported type first */
+	    for (int i = 0; i < ncol; i++) {
+	        if (! pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod)) {
+	            elog(ERROR, "kite do not support pg type %d", attr[i]->atttypid);
+	        }
+	    }
+	}
+
+
 	// list of addresses
 	{
-        	URL_KITE_FILE *urlf = (URL_KITE_FILE *)scandesc->fs_file;
+       	URL_KITE_FILE *urlf = (URL_KITE_FILE *)scandesc->fs_file;
 		char *p;
 		char *uri = urlf->common.url;
 		char *host = uri + strlen(PROTOCOL_KITE);
@@ -532,8 +544,8 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 	// SQL
 	{
 		xex_list_t *xexpr = ex->m_xexpr;
-       		List *targetlist = ex->m_targetlist;
-        	*sql = generate_sql(ex, xexpr, targetlist);
+		List *targetlist = ex->m_targetlist;
+		*sql = generate_sql(ex, xexpr, targetlist);
 		//elog(LOG, "sql = %s", *sql);
 	}
 

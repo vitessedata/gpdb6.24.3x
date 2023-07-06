@@ -99,6 +99,21 @@ const char *xrg_typ_str(int16_t ptyp, int16_t ltyp) {
 }
 
 bool pg_typ_supported(Oid t, int32_t typmod) {
+	static Oid valid_type[] =  {BOOLOID,
+								INT2OID,
+								INT4OID,
+								INT8OID,
+								DATEOID,
+								TIMEOID,
+								TIMESTAMPOID,
+								TIMESTAMPTZOID,
+								FLOAT4OID,
+								FLOAT8OID,
+								CASHOID,
+								INTERVALOID,
+								NUMERICOID,
+								BPCHAROID, TEXTOID, VARCHAROID};
+/*
 	static Oid valid_type[] =  {BOOLOID, 1000, 
 								INT2OID, INT2ARRAYOID,
 								INT4OID, INT4ARRAYOID,
@@ -113,6 +128,7 @@ bool pg_typ_supported(Oid t, int32_t typmod) {
 								INTERVALOID, 1187,
 								NUMERICOID, 1231,
 								BPCHAROID, TEXTOID, VARCHAROID, TEXTARRAYOID, 1014, 1015};
+*/
 
 	int ntype = sizeof(valid_type) / sizeof(Oid);
 
