@@ -8,6 +8,7 @@ typedef struct ExxFloatAvgTransdata
 {
         ArrayType arraytype;
         int32   nelem;
+        int32   lbound;
         float8  data[3];     // float8[3]
 } ExxFloatAvgTransdata;
 

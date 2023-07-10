@@ -297,9 +297,10 @@ int decode_avg_double(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 
 	SET_VARSIZE(p, sizeof(ExxFloatAvgTransdata));
 	p->arraytype.ndim = 1;
-	p->arraytype.dataoffset = (char *)p->data - (char *)p;
+	p->arraytype.dataoffset = 0;
 	p->arraytype.elemtype = FLOAT8OID;
 	p->nelem = 3;
+	p->lbound = 1;
 	p->data[0] = count;
 	p->data[1] = sum;
 	p->data[2] = 0;

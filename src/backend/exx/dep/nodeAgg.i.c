@@ -154,9 +154,10 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 						tr0 = &tmp0;
 						SET_VARSIZE(tr0, sizeof(ExxFloatAvgTransdata));
 						tr0->arraytype.ndim = 1;
-						tr0->arraytype.dataoffset = (char*) tr0->data - (char*)tr0;
+						tr0->arraytype.dataoffset = 0;
 						tr0->arraytype.elemtype = FLOAT8OID;
 						tr0->nelem = 3;
+						tr0->lbound = 1;
 						tr0->data[0] = tr0->data[1] = tr0->data[2] = 0;
 					}
 
