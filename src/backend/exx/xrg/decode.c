@@ -126,6 +126,7 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 		return 0;
 	case XRG_LTYP_DECIMAL:
 	case XRG_LTYP_STRING:
+	case XRG_LTYP_ARRAY:
 		break;
 	default: {
 		elog(ERROR, "invalid xrg logical type %d", ltyp);
@@ -160,6 +161,18 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 	}
 
 	if (ltyp == XRG_LTYP_STRING && ptyp == XRG_PTYP_BYTEA) {
+		int sz = xrg_bytea_len(data);
+		if (flag & XRG_FLAG_NULL) {
+			*pg_datum = 0;
+		} else {
+			SET_VARSIZE(data, sz + VARHDRSZ);
+			*pg_datum = PointerGetDatum(data);
+		}
+		return 0;
+	}
+
+	// TODO: date, timestamp, numeric need further processing
+	if (ltyp == XRG_LTYP_ARRAY && ptyp == XRG_PTYP_BYTEA) {
 		int sz = xrg_bytea_len(data);
 		if (flag & XRG_FLAG_NULL) {
 			*pg_datum = 0;
