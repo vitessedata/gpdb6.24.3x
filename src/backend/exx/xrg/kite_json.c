@@ -46,6 +46,10 @@ static void setup_schema(kite_extscan_t *ex, stringbuffer_t *strbuf) {
 
 		pg_typ_to_xrg_typ(attr[i]->atttypid, attr[i]->atttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 
+		if (is_array && attr[i]->attndims != 1) {
+			elog(ERROR, "kite only support 1D array");
+		}
+
 		/*
 		elog(LOG, "schema: typ=%d, typmod=%d, ptyp =%d, ltyp=%d, precision =%d, scale=%d, is_array = %d",
 				attr[i]->atttypid, attr[i]->atttypmod, ptyp, ltyp, precision, scale, is_array);
