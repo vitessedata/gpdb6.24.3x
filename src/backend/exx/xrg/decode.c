@@ -178,6 +178,11 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 			*pg_datum = 0;
 		} else {
 			SET_VARSIZE(data, sz + VARHDRSZ);
+			xrg_array_header_t *ka = (xrg_array_header_t *) data;
+			int16_t ptyp = xrg_array_ptyp(ka);
+			int16_t ltyp = xrg_array_ltyp(ka);
+			ArrayType * pga = (ArrayType *) data;
+			pga->elemtype = tgt->pg_attr->atttypid;
 			*pg_datum = PointerGetDatum(data);
 		}
 		return 0;
