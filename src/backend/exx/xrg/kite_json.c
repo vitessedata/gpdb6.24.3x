@@ -46,9 +46,6 @@ static void setup_schema(kite_extscan_t *ex, stringbuffer_t *strbuf) {
 
 		pg_typ_to_xrg_typ(attr[i]->atttypid, attr[i]->atttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 
-		if (is_array && attr[i]->attndims != 1) {
-			elog(ERROR, "kite only support 1D array");
-		}
 
 		/*
 		elog(LOG, "schema: typ=%d, typmod=%d, ptyp =%d, ltyp=%d, precision =%d, scale=%d, is_array = %d",
@@ -511,8 +508,8 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 
 		/* check the supported type first */
 		for (int i = 0; i < ncol; i++) {
-			if (!pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod)) {
-				elog(ERROR, "kite do not support pg type %d", attr[i]->atttypid);
+			if (!pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod, attr[i]->attndims)) {
+				elog(ERROR, "kite do not support pg type=%d, typmod=%d, ndim=%d", attr[i]->atttypid, attr[i]->atttypmod, attr[i]->attndims);
 			}
 		}
 	}

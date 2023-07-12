@@ -18,7 +18,7 @@ void pg_typ_to_xrg_typ(Oid t, int32_t typmod, int16_t *ptyp, int16_t *ltyp, int1
 
 bool pg_typ_match_xrg_typ(Oid pgtyp, int32_t typmod, int16_t ptyp, int16_t ltyp);
 
-bool pg_typ_supported(Oid t, int32_t typmod);
+bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim);
 
 #ifdef __cplusplus
 }

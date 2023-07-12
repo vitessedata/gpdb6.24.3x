@@ -98,7 +98,8 @@ const char *xrg_typ_str(int16_t ptyp, int16_t ltyp, bool is_array) {
 	return "";
 }
 
-bool pg_typ_supported(Oid t, int32_t typmod) {
+bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim) {
+/*
 	static Oid valid_type[] = {BOOLOID, 1000,
 		INT2OID, INT2ARRAYOID,
 		INT4OID, INT4ARRAYOID,
@@ -113,15 +114,52 @@ bool pg_typ_supported(Oid t, int32_t typmod) {
 		INTERVALOID, 1187,
 		NUMERICOID, 1231,
 		BPCHAROID, TEXTOID, VARCHAROID, TEXTARRAYOID, 1014, 1015};
+*/
+	static Oid basic_type[] = {BOOLOID,
+		INT2OID,
+		INT4OID,
+		INT8OID,
+		DATEOID,
+		TIMEOID,
+		TIMESTAMPOID,
+		TIMESTAMPTZOID,
+		FLOAT4OID,
+		FLOAT8OID,
+		CASHOID,
+		INTERVALOID,
+		NUMERICOID,
+		BPCHAROID, TEXTOID, VARCHAROID};
 
-	int ntype = sizeof(valid_type) / sizeof(Oid);
+	static Oid array_type[] = {1000, // BOOLARRAYOID
+		INT2ARRAYOID,
+		INT4ARRAYOID,
+		INT8ARRAYOID,
+		1182, // DATEARRAYOID
+		1183, // TIMEARRAYOID
+		1115, // TIMESTAMPARRAYOID
+		1185, // TIMESTAMPTZARRAYOID
+		FLOAT4ARRAYOID,
+		FLOAT8ARRAYOID,
+		1187, // INTERVALARRAYOID
+		1231, // NUMERICARRAYOID
+		TEXTARRAYOID, 1014, 1015};
 
-	for (int i = 0; i < ntype; i++) {
-		if (valid_type[i] == t) {
+	int nbasictype = sizeof(basic_type) / sizeof(Oid);
+	for (int i = 0; i < nbasictype; i++) {
+		if (basic_type[i] == t) {
 			return true;
 		}
 	}
 
+	int narraytype = sizeof(array_type) / sizeof(Oid);
+	for (int i = 0; i < narraytype; i++) {
+		if (array_type[i] == t) {
+			if (ndim == 1) {
+				return true;
+			}
+			return false;
+		}
+	}
 	return false;
 }
 
