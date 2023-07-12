@@ -41,54 +41,54 @@ size_t xrg_typ_size(int16_t ptyp) {
 	return 0;
 }
 
-const char *xrg_typ_str(int16_t ptyp, int16_t ltyp) {
+const char *xrg_typ_str(int16_t ptyp, int16_t ltyp, bool is_array) {
 	switch (ptyp) {
 	case XRG_PTYP_INT8:
-		return "int8";
+		return is_array ? "int8[]" : "int8";
 	case XRG_PTYP_INT16:
-		return "int16";
+		return is_array ? "int16[]" : "int16";
 	case XRG_PTYP_INT32:
 		switch (ltyp) {
 		case XRG_LTYP_DATE:
-			return "date";
+			return is_array ? "date[]" : "date";
 		default:
-			return "int32";
+			return is_array ? "int32[]" : "int32";
 		}
 		break;
 	case XRG_PTYP_INT64:
 		switch (ltyp) {
 		case XRG_LTYP_DECIMAL:
-			return "decimal";
+			return is_array ? "decimal[]" : "decimal";
 		case XRG_LTYP_TIME:
-			return "time";
+			return is_array ? "time[]" : "time";
 		case XRG_LTYP_TIMESTAMP:
-			return "timestamp";
+			return is_array ? "timestamp[]" : "timestamp";
 		default:
-			return "int64";
+			return is_array ? "int64[]" : "int64";
 		}
 
 		break;
 	case XRG_PTYP_INT128:
 		switch (ltyp) {
 		case XRG_LTYP_INTERVAL:
-			return "interval";
+			return is_array ? "interval[]" : "interval";
 		case XRG_LTYP_DECIMAL:
-			return "decimal";
+			return is_array ? "decimal[]" : "decimal";
 		default:
-			return "int128";
+			return is_array ? "int128[]" : "int128";
 		}
 
 		break;
 	case XRG_PTYP_FP32:
-		return "float";
+		return is_array ? "float[]" : "float";
 	case XRG_PTYP_FP64:
-		return "double";
+		return is_array ? "double[]" : "double";
 	case XRG_PTYP_BYTEA:
 		switch (ltyp) {
 		case XRG_LTYP_STRING:
-			return "string";
+			return is_array ? "string[]" : "string";
 		default:
-			return "bytea";
+			return is_array ? "bytea[]" : "bytea";
 		}
 		break;
 	default:
@@ -99,40 +99,24 @@ const char *xrg_typ_str(int16_t ptyp, int16_t ltyp) {
 }
 
 bool pg_typ_supported(Oid t, int32_t typmod) {
-	static Oid valid_type[] =  {BOOLOID,
-								INT2OID,
-								INT4OID,
-								INT8OID,
-								DATEOID,
-								TIMEOID,
-								TIMESTAMPOID,
-								TIMESTAMPTZOID,
-								FLOAT4OID,
-								FLOAT8OID,
-								CASHOID,
-								INTERVALOID,
-								NUMERICOID,
-								BPCHAROID, TEXTOID, VARCHAROID};
-/*
-	static Oid valid_type[] =  {BOOLOID, 1000, 
-								INT2OID, INT2ARRAYOID,
-								INT4OID, INT4ARRAYOID,
-								INT8OID, INT8ARRAYOID,
-								DATEOID, 1182,
-								TIMEOID, 1183,
-								TIMESTAMPOID, 1115,
-								TIMESTAMPTZOID, 1185,
-								FLOAT4OID, FLOAT4ARRAYOID,
-								FLOAT8OID, FLOAT8ARRAYOID,
-								CASHOID,
-								INTERVALOID, 1187,
-								NUMERICOID, 1231,
-								BPCHAROID, TEXTOID, VARCHAROID, TEXTARRAYOID, 1014, 1015};
-*/
+	static Oid valid_type[] = {BOOLOID, 1000,
+		INT2OID, INT2ARRAYOID,
+		INT4OID, INT4ARRAYOID,
+		INT8OID, INT8ARRAYOID,
+		DATEOID, 1182,
+		TIMEOID, 1183,
+		TIMESTAMPOID, 1115,
+		TIMESTAMPTZOID, 1185,
+		FLOAT4OID, FLOAT4ARRAYOID,
+		FLOAT8OID, FLOAT8ARRAYOID,
+		CASHOID,
+		INTERVALOID, 1187,
+		NUMERICOID, 1231,
+		BPCHAROID, TEXTOID, VARCHAROID, TEXTARRAYOID, 1014, 1015};
 
 	int ntype = sizeof(valid_type) / sizeof(Oid);
 
-	for (int i = 0 ; i < ntype ; i++) {
+	for (int i = 0; i < ntype; i++) {
 		if (valid_type[i] == t) {
 			return true;
 		}
@@ -140,7 +124,6 @@ bool pg_typ_supported(Oid t, int32_t typmod) {
 
 	return false;
 }
-
 
 void pg_typ_to_xrg_typ(Oid t, int32_t typmod, int16_t *ptyp, int16_t *ltyp, int16_t *precision, int16_t *scale, bool *is_array) {
 	*is_array = false;
@@ -301,6 +284,17 @@ void pg_typ_to_xrg_typ(Oid t, int32_t typmod, int16_t *ptyp, int16_t *ltyp, int1
 		*ptyp = XRG_PTYP_INT64;
 		*ltyp = XRG_LTYP_DECIMAL;
 		*is_array = true;
+		if (typmod >= (int32)VARHDRSZ) {
+			int32_t tmp = typmod - VARHDRSZ;
+			*precision = (tmp >> 16) & 0xFFFF;
+			*scale = tmp & 0xFFFF;
+
+			if (*precision <= 18) {
+				*ptyp = XRG_PTYP_INT64;
+			} else {
+				*ptyp = XRG_PTYP_INT128;
+			}
+		}
 	}
 		return;
 	case BYTEAOID: {
@@ -583,7 +577,7 @@ const char *op_arraytype_to_string(Const *c) {
 
 	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 	size_t itemsz = xrg_typ_size(ptyp);
-	const char *ts = xrg_typ_str(ptyp, ltyp);
+	const char *ts = xrg_typ_str(ptyp, ltyp, false); // only want to get primitive type
 	Insist(ts && *ts != 0 && is_array == true);
 
 	StringInfoData qual;

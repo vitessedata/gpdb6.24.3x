@@ -52,12 +52,13 @@ static void setup_schema(kite_extscan_t *ex, stringbuffer_t *strbuf) {
 		*/
 
 		char *name = colname(ex->m_node, i + 1);
-		const char *t = xrg_typ_str(ptyp, ltyp);
+		const char *t = xrg_typ_str(ptyp, ltyp, is_array);
 
 		stringbuffer_append_string(strbuf, name);
 		stringbuffer_append(strbuf, ':');
 		stringbuffer_append_string(strbuf, t);
-		if (strcmp(t, "decimal") == 0) {
+		const char *DECIMAL = "decimal";
+		if (strncmp(t, DECIMAL, strlen(DECIMAL)) == 0) {
 			stringbuffer_append(strbuf, ':');
 			stringbuffer_append_int(strbuf, precision);
 			stringbuffer_append(strbuf, ':');
@@ -66,7 +67,6 @@ static void setup_schema(kite_extscan_t *ex, stringbuffer_t *strbuf) {
 
 		stringbuffer_append(strbuf, '\n');
 	}
-
 }
 
 static char *get_uri(kite_extscan_t *ex) {
@@ -238,7 +238,7 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		ptyp = ltyp = precision = scale = 0;
 		pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 
-		const char *ts = xrg_typ_str(ptyp, ltyp);
+		const char *ts = xrg_typ_str(ptyp, ltyp, false);
 		Insist(ts && *ts != 0);
 		if (strcmp(ts, "string") == 0) {
 			if (c->constlen == -1) {
@@ -502,31 +502,30 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 	// check supported data type
 	{
 		TupleDesc scan_tdesc = scan_tupdesc(ex->m_node);
-	    int ncol = scan_tdesc->natts;
-	    Form_pg_attribute *attr = scan_tdesc->attrs;
-	
-	    /* check the supported type first */
-	    for (int i = 0; i < ncol; i++) {
-	        if (! pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod)) {
-	            elog(ERROR, "kite do not support pg type %d", attr[i]->atttypid);
-	        }
-	    }
-	}
+		int ncol = scan_tdesc->natts;
+		Form_pg_attribute *attr = scan_tdesc->attrs;
 
+		/* check the supported type first */
+		for (int i = 0; i < ncol; i++) {
+			if (!pg_typ_supported(attr[i]->atttypid, attr[i]->atttypmod)) {
+				elog(ERROR, "kite do not support pg type %d", attr[i]->atttypid);
+			}
+		}
+	}
 
 	// list of addresses
 	{
-       	URL_KITE_FILE *urlf = (URL_KITE_FILE *)scandesc->fs_file;
+		URL_KITE_FILE *urlf = (URL_KITE_FILE *)scandesc->fs_file;
 		char *p;
 		char *uri = urlf->common.url;
 		char *host = uri + strlen(PROTOCOL_KITE);
 		char *path = strchr(host, '/');
-		if (! path) {
+		if (!path) {
 			elog(ERROR, "setup_query: invalid uri %s", uri);
 		}
 
 		int len = path - host;
-		char *ret = (char *) palloc(len + 1);
+		char *ret = (char *)palloc(len + 1);
 
 		if (!ret) {
 			elog(ERROR, "setup_query: palloc out of memory");
@@ -539,7 +538,6 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 		}
 		*addr = ret;
 	}
-
 
 	// SQL
 	{
@@ -559,8 +557,8 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 	}
 
 	// fragment
-        *fragid = GpIdentity.segindex;
-        *fragcnt = getgpsegmentCount();
+	*fragid = GpIdentity.segindex;
+	*fragcnt = getgpsegmentCount();
 	//elog(LOG, "fragid = %d, fragcnt = %d", *fragid, *fragcnt);
 
 	// format
@@ -596,5 +594,3 @@ int setup_query(kite_extscan_t *ex, char **addr, char **schema, char **sql, int 
 	}
 	return 0;
 }
-
-

@@ -194,7 +194,7 @@ static void const_fill_xexpr(Node *node, xex_list_t *list) {
 	// constvalue
 	ptyp = ltyp = precision = scale = 0;
 	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
-	ts = xrg_typ_str(ptyp, ltyp);
+	ts = xrg_typ_str(ptyp, ltyp, false);
 	Insist(ts && *ts != 0);
 	if (strcmp(ts, "string") == 0) {
 		if (c->constlen == -1) {

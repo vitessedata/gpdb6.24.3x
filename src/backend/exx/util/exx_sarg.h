@@ -12,7 +12,7 @@ const char *op_arraytype_to_string(Const *c);
 
 size_t xrg_typ_size(int16_t ptyp);
 
-const char *xrg_typ_str(int16_t ptyp, int16_t ltyp);
+const char *xrg_typ_str(int16_t ptyp, int16_t ltyp, bool is_array);
 
 void pg_typ_to_xrg_typ(Oid t, int32_t typmod, int16_t *ptyp, int16_t *ltyp, int16_t *precision, int16_t *scale, bool *is_array);
 
