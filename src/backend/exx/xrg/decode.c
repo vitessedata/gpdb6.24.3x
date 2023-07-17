@@ -4,6 +4,7 @@
 #include "exx/exx_trans.h"
 #include "aggop.h"
 #include "../util/decimal.h"
+#include "../util/exx_sarg.h"
 
 static inline Datum decode_int16(char *data) {
 	int16_t *p = (int16_t *)data;
@@ -54,6 +55,115 @@ static Datum decode_timestamp(char *data) {
 	Timestamp epoch_ts = SetEpochTimestamp();
 	ts += epoch_ts;
 	return Int64GetDatum(ts);
+}
+
+static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
+	int16_t ptyp = xrg_array_ptyp(arr);
+	int16_t ltyp = xrg_array_ltyp(arr);
+	int ndim = xrg_array_ndim(arr);
+	int ndims = *xrg_array_dims(arr);
+	char *p = xrg_array_data_ptr(arr);
+	int itemsz = xrg_typ_size(ptyp);
+
+	Insist(sz = xrg_array_size(arr));
+	Insist(ltyp == XRG_LTYP_DATE);
+	Insist(ndim == 1);
+	Insist(itemsz == sizeof(int32_t));
+	for (int i = 0 ; i < ndims ; i++) {
+		*((int32_t *)p) -= (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
+		p += sizeof(int32_t);
+	}
+	ArrayType *pga = (ArrayType *) arr;
+	pga->elemtype = pg_attr->atttypid;
+	SET_VARSIZE(pga, sz);
+	return PointerGetDatum(pga);
+}
+
+static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
+	Timestamp epoch_ts = SetEpochTimestamp();
+	int16_t ptyp = xrg_array_ptyp(arr);
+	int16_t ltyp = xrg_array_ltyp(arr);
+	int ndim = xrg_array_ndim(arr);
+	int ndims = *xrg_array_dims(arr);
+	char *p = xrg_array_data_ptr(arr);
+	int itemsz = xrg_typ_size(ptyp);
+
+	Insist(sz = xrg_array_size(arr));
+	Insist(ltyp == XRG_LTYP_TIMESTAMP);
+	Insist(ndim == 1);
+	Insist(itemsz == sizeof(int64_t));
+	for (int i = 0 ; i < ndims ; i++) {
+		*((int64_t *)p) += epoch_ts;
+		p += sizeof(int64_t);
+	}
+	ArrayType *pga = (ArrayType *) arr;
+	pga->elemtype = pg_attr->atttypid;
+	SET_VARSIZE(pga, sz);
+	return PointerGetDatum(pga);
+}
+
+static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
+	int16_t ptyp = xrg_array_ptyp(arr);
+	int16_t ltyp = xrg_array_ltyp(arr);
+	int ndim = xrg_array_ndim(arr);
+	int ndims = *xrg_array_dims(arr);
+	char *p = xrg_array_data_ptr(arr);
+	int itemsz = xrg_typ_size(ptyp);
+
+	Insist(sz = xrg_array_size(arr));
+	Insist(ltyp == XRG_LTYP_STRING);
+	Insist(ndim == 1);
+	Insist(itemsz == -1);
+	for (int i = 0 ; i < ndims ; i++) {
+		int len = xrg_bytea_len(p);
+		SET_VARSIZE(p, len+4);
+		p += len+4;
+	}
+	ArrayType *pga = (ArrayType *) arr;
+	pga->elemtype = pg_attr->atttypid;
+	SET_VARSIZE(pga, sz);
+	return PointerGetDatum(pga);
+}
+
+static Datum decode_dec64av(xrg_array_header_t *arr, int sz, int precision, int scale, Form_pg_attribute pg_attr) {
+
+	return 0;
+}
+
+static Datum decode_dec128av(xrg_array_header_t *arr, int sz, int precision, int scale, Form_pg_attribute pg_attr) {
+
+	return 0;
+}
+
+static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, int scale, Form_pg_attribute pg_attr) {
+	int16_t ptyp = xrg_array_ptyp(arr);
+	int16_t ltyp = xrg_array_ltyp(arr);
+	int ndim = xrg_array_ndim(arr);
+
+	Insist(sz = xrg_array_size(arr));
+	Insist(ltyp == XRG_LTYP_DECIMAL);
+	Insist(ndim == 1);
+	Insist(ptyp == XRG_PTYP_INT64 || ptyp == XRG_PTYP_INT128);
+
+	switch (ptyp) {
+	case XRG_PTYP_INT64:
+		return decode_dec64av(arr, sz, precision, scale, pg_attr);
+		break;
+	case XRG_PTYP_INT128:
+		return decode_dec128av(arr, sz, precision, scale, pg_attr);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
+static Datum decode_defaultav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
+	Insist(sz = xrg_array_size(arr));
+	ArrayType *pga = (ArrayType *) arr;
+	pga->elemtype = pg_attr->atttypid;
+	SET_VARSIZE(pga, sz);
+	return PointerGetDatum(pga);
 }
 
 /* decode functions */
@@ -173,18 +283,39 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 
 	// TODO: date, timestamp, numeric need further processing
 	if (ltyp == XRG_LTYP_ARRAY && ptyp == XRG_PTYP_BYTEA) {
+		xrg_array_header_t *ptr = (xrg_array_header_t *) xrg_bytea_ptr(data);
 		int sz = xrg_bytea_len(data);
-		const char *ptr = xrg_bytea_ptr(data);
+		//int16_t array_ptyp = xrg_array_ptyp(ptr);
+		int16_t array_ltyp = xrg_array_ltyp(ptr);
 		if (flag & XRG_FLAG_NULL) {
 			*pg_datum = 0;
 		} else {
-			xrg_array_header_t *ka = (xrg_array_header_t *) ptr;
-			SET_VARSIZE(ptr, sz);
-			int16_t ptyp = xrg_array_ptyp(ka);
-			int16_t ltyp = xrg_array_ltyp(ka);
-			ArrayType *pga = (ArrayType *) ptr;
-			pga->elemtype = tgt->pg_attr->atttypid;
-			*pg_datum = PointerGetDatum(ptr);
+
+			switch (array_ltyp) {
+			case XRG_LTYP_DATE:
+			{
+				*pg_datum = decode_dateav(ptr, sz, tgt->pg_attr);
+					break;
+			}
+			case XRG_LTYP_TIMESTAMP:
+			{
+				*pg_datum = decode_timestampav(ptr, sz, tgt->pg_attr);
+				break;
+			}
+			case XRG_LTYP_STRING:
+			{
+				*pg_datum = decode_stringav(ptr, sz, tgt->pg_attr);
+				break;
+			}
+			case XRG_LTYP_DECIMAL:
+			{
+				*pg_datum = decode_decimalav(ptr, sz, precision, scale, tgt->pg_attr);
+				break;
+			}
+			default:
+				*pg_datum = decode_defaultav(ptr, sz, tgt->pg_attr);
+				break;
+			}
 		}
 		return 0;
 	}
