@@ -153,12 +153,84 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 
 static Datum decode_dec64av(xrg_array_header_t *arr, int sz, int precision, int scale, Form_pg_attribute pg_attr) {
 
-	return 0;
+	ArrayType *ret = 0;
+	FmgrInfo flinfo;
+
+	int16_t ptyp = xrg_array_ptyp(arr);
+	int16_t ltyp = xrg_array_ltyp(arr);
+	int ndim = xrg_array_ndim(arr);
+	int ndims = *xrg_array_dims(arr);
+	char *p = xrg_array_data_ptr(arr);
+	int itemsz = xrg_typ_size(ptyp);
+	char dst[MAX_DEC128_STRLEN];
+
+	Insist(sz = xrg_array_size(arr));
+	Insist(ltyp == XRG_LTYP_DECIMAL);
+	Insist(ptyp == XRG_PTYP_INT64);
+	Insist(ndim == 1);
+	Insist(itemsz == sizeof(int64_t));
+
+	StringInfoData str;
+	initStringInfo(&str);
+
+	appendStringInfoCharMacro(&str, '{');
+	for (int i = 0 ; i < ndims ; i++) {
+		int64_t v = *((int64_t *)p);
+		decimal64_to_string(v, precision, scale, dst, sizeof(dst));
+		if (i > 0) {
+			appendStringInfoCharMacro(&str, ',');
+		}
+		appendStringInfoString(&str, dst);
+		p += sizeof(int64_t);
+	}
+	appendStringInfoCharMacro(&str, '}');
+
+	memset(&flinfo, 0, sizeof(FmgrInfo));
+	fmgr_info_cxt(fmgr_internal_function("array_in"), &flinfo, CurrentMemoryContext);
+	ret = (ArrayType *) InputFunctionCall(&flinfo, str.data, pg_array_to_element_oid(pg_attr->atttypid), pg_attr->atttypmod);
+	return PointerGetDatum(ret);
 }
 
 static Datum decode_dec128av(xrg_array_header_t *arr, int sz, int precision, int scale, Form_pg_attribute pg_attr) {
 
-	return 0;
+	ArrayType *ret = 0;
+	FmgrInfo flinfo;
+
+	int16_t ptyp = xrg_array_ptyp(arr);
+	int16_t ltyp = xrg_array_ltyp(arr);
+	int ndim = xrg_array_ndim(arr);
+	int ndims = *xrg_array_dims(arr);
+	char *p = xrg_array_data_ptr(arr);
+	int itemsz = xrg_typ_size(ptyp);
+	char dst[MAX_DEC128_STRLEN];
+
+	Insist(sz = xrg_array_size(arr));
+	Insist(ltyp == XRG_LTYP_DECIMAL);
+	Insist(ptyp == XRG_PTYP_INT128);
+	Insist(ndim == 1);
+	Insist(itemsz == sizeof(__int128_t));
+
+	StringInfoData str;
+	initStringInfo(&str);
+
+	appendStringInfoCharMacro(&str, '{');
+	for (int i = 0 ; i < ndims ; i++) {
+		__int128_t v = 0;
+		memcpy(&v, p, sizeof(__int128_t));
+		decimal128_to_string(v, precision, scale, dst, sizeof(dst));
+		if (i > 0) {
+			appendStringInfoCharMacro(&str, ',');
+		}
+		appendStringInfoString(&str, dst);
+		p += sizeof(__int128_t);
+	}
+
+	appendStringInfoCharMacro(&str, '}');
+
+	memset(&flinfo, 0, sizeof(FmgrInfo));
+	fmgr_info_cxt(fmgr_internal_function("array_in"), &flinfo, CurrentMemoryContext);
+	ret = (ArrayType *) InputFunctionCall(&flinfo, str.data, pg_array_to_element_oid(pg_attr->atttypid), pg_attr->atttypmod);
+	return PointerGetDatum(ret);
 }
 
 static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, int scale, Form_pg_attribute pg_attr) {
@@ -169,7 +241,6 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 	Insist(ndim == 1);
-	Insist(ptyp == XRG_PTYP_INT64 || ptyp == XRG_PTYP_INT128);
 
 	switch (ptyp) {
 	case XRG_PTYP_INT64:

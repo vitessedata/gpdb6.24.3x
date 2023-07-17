@@ -124,9 +124,10 @@ Oid pg_array_to_element_oid(Oid t) {
 		1185, // TIMESTAMPTZARRAYOID
 		FLOAT4ARRAYOID,
 		FLOAT8ARRAYOID,
+		791,  // CASHARRAYOID
 		1187, // INTERVALARRAYOID
 		1231, // NUMERICARRAYOID
-		TEXTARRAYOID, 1014, 1015};
+		1014, TEXTARRAYOID, 1015};
 
 	int narraytypes = sizeof(array_type) / sizeof(Oid);
 
@@ -181,6 +182,7 @@ bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim) {
 		1185, // TIMESTAMPTZARRAYOID
 		FLOAT4ARRAYOID,
 		FLOAT8ARRAYOID,
+		791,  // CASHARRAYOID
 		1187, // INTERVALARRAYOID
 		1231, // NUMERICARRAYOID
 		TEXTARRAYOID, 1014, 1015};
