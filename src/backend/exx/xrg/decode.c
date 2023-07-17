@@ -74,7 +74,7 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 		p += sizeof(int32_t);
 	}
 	ArrayType *pga = (ArrayType *) arr;
-	pga->elemtype = pg_attr->atttypid;
+	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
 	return PointerGetDatum(pga);
 }
@@ -97,7 +97,7 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 		p += sizeof(int64_t);
 	}
 	ArrayType *pga = (ArrayType *) arr;
-	pga->elemtype = pg_attr->atttypid;
+	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
 	return PointerGetDatum(pga);
 }
@@ -120,7 +120,7 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 		p += len+4;
 	}
 	ArrayType *pga = (ArrayType *) arr;
-	pga->elemtype = pg_attr->atttypid;
+	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
 	return PointerGetDatum(pga);
 }
@@ -161,7 +161,7 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
 static Datum decode_defaultav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
 	Insist(sz = xrg_array_size(arr));
 	ArrayType *pga = (ArrayType *) arr;
-	pga->elemtype = pg_attr->atttypid;
+	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
 	return PointerGetDatum(pga);
 }

@@ -20,6 +20,8 @@ bool pg_typ_match_xrg_typ(Oid pgtyp, int32_t typmod, int16_t ptyp, int16_t ltyp)
 
 bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim);
 
+Oid pg_array_to_element_oid(Oid t);
+
 #ifdef __cplusplus
 }
 #endif

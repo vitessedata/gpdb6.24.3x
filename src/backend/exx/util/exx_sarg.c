@@ -98,6 +98,47 @@ const char *xrg_typ_str(int16_t ptyp, int16_t ltyp, bool is_array) {
 	return "";
 }
 
+Oid pg_array_to_element_oid(Oid t) {
+	static Oid basic_type[] = {BOOLOID,
+		INT2OID,
+		INT4OID,
+		INT8OID,
+		DATEOID,
+		TIMEOID,
+		TIMESTAMPOID,
+		TIMESTAMPTZOID,
+		FLOAT4OID,
+		FLOAT8OID,
+		CASHOID,
+		INTERVALOID,
+		NUMERICOID,
+		BPCHAROID, TEXTOID, VARCHAROID};
+
+	static Oid array_type[] = {1000, // BOOLARRAYOID
+		INT2ARRAYOID,
+		INT4ARRAYOID,
+		INT8ARRAYOID,
+		1182, // DATEARRAYOID
+		1183, // TIMEARRAYOID
+		1115, // TIMESTAMPARRAYOID
+		1185, // TIMESTAMPTZARRAYOID
+		FLOAT4ARRAYOID,
+		FLOAT8ARRAYOID,
+		1187, // INTERVALARRAYOID
+		1231, // NUMERICARRAYOID
+		TEXTARRAYOID, 1014, 1015};
+
+	int narraytypes = sizeof(array_type) / sizeof(Oid);
+
+	for (int i =  0 ; i < narraytypes ; i++) {
+		if (array_type[i] == t) {
+			return basic_type[i];
+		}
+	}
+
+	return InvalidOid;
+}
+
 bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim) {
 /*
 	static Oid valid_type[] = {BOOLOID, 1000,
