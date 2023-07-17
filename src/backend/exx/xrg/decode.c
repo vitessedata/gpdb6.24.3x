@@ -102,6 +102,13 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 	return PointerGetDatum(pga);
 }
 
+static inline int32_t pgva_pack(char *dst, const void *ptr, int32_t len)
+{
+	SET_VARSIZE(dst, len + 4);
+	memcpy(dst+4, ptr, len);
+	return len+4;
+}
+
 static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
 	int16_t ptyp = xrg_array_ptyp(arr);
 	int16_t ltyp = xrg_array_ltyp(arr);
@@ -114,14 +121,33 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 	Insist(ltyp == XRG_LTYP_STRING);
 	Insist(ndim == 1);
 	Insist(itemsz == -1);
+
+	int total = 0;
 	for (int i = 0 ; i < ndims ; i++) {
 		int len = xrg_bytea_len(p);
-		SET_VARSIZE(p, len+4);
+
+		total += xrg_align(4, len+4);
 		p += len+4;
 	}
-	ArrayType *pga = (ArrayType *) arr;
+
+	total += ARR_OVERHEAD_NONULLS(ndim);
+
+	ArrayType *pga = (ArrayType *) palloc(total);
+	memcpy(pga, arr, ARR_OVERHEAD_NONULLS(ndim));
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
-	SET_VARSIZE(pga, sz);
+	SET_VARSIZE(pga, total);
+
+	char *pgp = ARR_DATA_PTR(pga);
+	p = xrg_array_data_ptr(arr);
+	
+	for (int i = 0 ; i < ndims ; i++) {
+		int len = xrg_bytea_len(p);
+		const char *data = xrg_bytea_ptr(p);
+
+		pgp += xrg_align(4, pgva_pack(pgp, data, len));
+		p += len + 4;
+	}
+
 	return PointerGetDatum(pga);
 }
 
