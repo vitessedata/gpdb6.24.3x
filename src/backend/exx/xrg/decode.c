@@ -64,6 +64,7 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 	int ndims = *xrg_array_dims(arr);
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
+	char *nullmap = xrg_array_nullbitmap(arr);
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DATE);
@@ -77,8 +78,10 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 	} 
 
 	for (int i = 0 ; i < ndims ; i++) {
-		*((int32_t *)p) -= (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
-		p += sizeof(int32_t);
+		if (!xrg_array_get_isnull(nullmap, i)) {
+			*((int32_t *)p) -= (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
+			p += sizeof(int32_t);
+		}
 	}
 	ArrayType *pga = (ArrayType *) arr;
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
@@ -94,6 +97,7 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 	int ndims = *xrg_array_dims(arr);
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
+	char *nullmap = xrg_array_nullbitmap(arr);
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_TIMESTAMP);
@@ -107,8 +111,10 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 	} 
 
 	for (int i = 0 ; i < ndims ; i++) {
-		*((int64_t *)p) += epoch_ts;
-		p += sizeof(int64_t);
+		if (!xrg_array_get_isnull(nullmap, i)) {
+			*((int64_t *)p) += epoch_ts;
+			p += sizeof(int64_t);
+		}
 	}
 	ArrayType *pga = (ArrayType *) arr;
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
@@ -130,6 +136,7 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 	int ndims = *xrg_array_dims(arr);
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
+	char *nullmap = xrg_array_nullbitmap(arr);
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_STRING);
@@ -144,9 +151,11 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 
 	int total = 0;
 	for (int i = 0 ; i < ndims ; i++) {
-		int len = xrg_bytea_len(p);
-		total += xrg_align(4, len+4);
-		p += len+4;
+		if (!xrg_array_get_isnull(nullmap, i)) {
+			int len = xrg_bytea_len(p);
+			total += xrg_align(4, len+4);
+			p += len+4;
+		}
 	}
 
 	ArrayType *pga = 0;
@@ -167,11 +176,12 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 	p = xrg_array_data_ptr(arr);
 	
 	for (int i = 0 ; i < ndims ; i++) {
-		int len = xrg_bytea_len(p);
-		const char *data = xrg_bytea_ptr(p);
-
-		pgp += xrg_align(4, pgva_pack(pgp, data, len));
-		p += len + 4;
+		if (!xrg_array_get_isnull(nullmap, i)) {
+			int len = xrg_bytea_len(p);
+			const char *data = xrg_bytea_ptr(p);
+			pgp += xrg_align(4, pgva_pack(pgp, data, len));
+			p += len + 4;
+		}
 	}
 
 	return PointerGetDatum(pga);
@@ -208,8 +218,8 @@ static Datum decode_dec64av(xrg_array_header_t *arr, int sz, int precision, int 
 			int64_t v = *((int64_t *)p);
 			decimal64_to_string(v, precision, scale, dst, sizeof(dst));
 			appendStringInfoString(&str, dst);
+			p += sizeof(int64_t);
 		}
-		p += sizeof(int64_t);
 	}
 	appendStringInfoCharMacro(&str, '}');
 
