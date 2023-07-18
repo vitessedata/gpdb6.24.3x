@@ -67,8 +67,15 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DATE);
-	Insist(ndim == 1);
 	Insist(itemsz == sizeof(int32_t));
+
+	if (ndim == 0) {
+		ArrayType *ret = (ArrayType *) arr;
+		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
+		SET_VARSIZE(ret, sz);
+		return PointerGetDatum(ret);
+	} 
+
 	for (int i = 0 ; i < ndims ; i++) {
 		*((int32_t *)p) -= (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
 		p += sizeof(int32_t);
@@ -90,8 +97,15 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_TIMESTAMP);
-	Insist(ndim == 1);
 	Insist(itemsz == sizeof(int64_t));
+
+	if (ndim == 0) {
+		ArrayType *ret = (ArrayType *) arr;
+		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
+		SET_VARSIZE(ret, sz);
+		return PointerGetDatum(ret);
+	} 
+
 	for (int i = 0 ; i < ndims ; i++) {
 		*((int64_t *)p) += epoch_ts;
 		p += sizeof(int64_t);
@@ -119,21 +133,33 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_STRING);
-	Insist(ndim == 1);
 	Insist(itemsz == -1);
+
+	if (ndim == 0) {
+		ArrayType *ret = (ArrayType *) arr;
+		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
+		SET_VARSIZE(ret, sz);
+		return PointerGetDatum(ret);
+	} 
 
 	int total = 0;
 	for (int i = 0 ; i < ndims ; i++) {
 		int len = xrg_bytea_len(p);
-
 		total += xrg_align(4, len+4);
 		p += len+4;
 	}
 
-	total += ARR_OVERHEAD_NONULLS(ndim);
+	ArrayType *pga = 0;
+	if (xrg_array_hasnull(arr)) {
+		total += ARR_OVERHEAD_WITHNULLS(ndim, ndims);
+		pga = (ArrayType *) palloc(total);
+		memcpy(pga, arr, ARR_OVERHEAD_WITHNULLS(ndim, ndims));
+	} else {
+		total += ARR_OVERHEAD_NONULLS(ndim);
+		pga = (ArrayType *) palloc(total);
+		memcpy(pga, arr, ARR_OVERHEAD_NONULLS(ndim));
+	}
 
-	ArrayType *pga = (ArrayType *) palloc(total);
-	memcpy(pga, arr, ARR_OVERHEAD_NONULLS(ndim));
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, total);
 
@@ -163,24 +189,26 @@ static Datum decode_dec64av(xrg_array_header_t *arr, int sz, int precision, int 
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char dst[MAX_DEC128_STRLEN];
+	char *nullmap = xrg_array_nullbitmap(arr);
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 	Insist(ptyp == XRG_PTYP_INT64);
-	Insist(ndim == 1);
 	Insist(itemsz == sizeof(int64_t));
+	Insist(ndim == 1);
 
 	StringInfoData str;
 	initStringInfo(&str);
-
 	appendStringInfoCharMacro(&str, '{');
 	for (int i = 0 ; i < ndims ; i++) {
-		int64_t v = *((int64_t *)p);
-		decimal64_to_string(v, precision, scale, dst, sizeof(dst));
 		if (i > 0) {
 			appendStringInfoCharMacro(&str, ',');
 		}
-		appendStringInfoString(&str, dst);
+		if (!xrg_array_get_isnull(nullmap, i)) {
+			int64_t v = *((int64_t *)p);
+			decimal64_to_string(v, precision, scale, dst, sizeof(dst));
+			appendStringInfoString(&str, dst);
+		}
 		p += sizeof(int64_t);
 	}
 	appendStringInfoCharMacro(&str, '}');
@@ -203,26 +231,28 @@ static Datum decode_dec128av(xrg_array_header_t *arr, int sz, int precision, int
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char dst[MAX_DEC128_STRLEN];
+	char *nullmap = xrg_array_nullbitmap(arr);
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 	Insist(ptyp == XRG_PTYP_INT128);
-	Insist(ndim == 1);
 	Insist(itemsz == sizeof(__int128_t));
+	Insist(ndim == 1);
 
 	StringInfoData str;
 	initStringInfo(&str);
-
 	appendStringInfoCharMacro(&str, '{');
 	for (int i = 0 ; i < ndims ; i++) {
-		__int128_t v = 0;
-		memcpy(&v, p, sizeof(__int128_t));
-		decimal128_to_string(v, precision, scale, dst, sizeof(dst));
 		if (i > 0) {
 			appendStringInfoCharMacro(&str, ',');
 		}
-		appendStringInfoString(&str, dst);
-		p += sizeof(__int128_t);
+		if (!xrg_array_get_isnull(nullmap, i)) {
+			__int128_t v = 0;
+			memcpy(&v, p, sizeof(__int128_t));
+			decimal128_to_string(v, precision, scale, dst, sizeof(dst));
+			appendStringInfoString(&str, dst);
+			p += sizeof(__int128_t);
+		}
 	}
 
 	appendStringInfoCharMacro(&str, '}');
@@ -240,7 +270,13 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
 
 	Insist(sz = xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
-	Insist(ndim == 1);
+
+	if (ndim == 0) {
+		ArrayType *ret = (ArrayType *) arr;
+		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
+		SET_VARSIZE(ret, sz);
+		return PointerGetDatum(ret);
+	} 
 
 	switch (ptyp) {
 	case XRG_PTYP_INT64:
