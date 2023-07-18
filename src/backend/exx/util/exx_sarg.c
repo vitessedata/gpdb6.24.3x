@@ -197,7 +197,9 @@ bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim) {
 	int narraytype = sizeof(array_type) / sizeof(Oid);
 	for (int i = 0; i < narraytype; i++) {
 		if (array_type[i] == t) {
-			if (ndim == 1) {
+			// HACK: CREATE EXTERNAL TABLE LIKE TBL -> ndim = 0
+			// Therefore, We can only check ndim = 0 or 1 is valid.
+			if (ndim == 0 || ndim == 1) {
 				return true;
 			}
 			return false;
