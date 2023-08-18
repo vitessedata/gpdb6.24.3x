@@ -152,6 +152,12 @@ static inline const char *xrg_opexpr_str(int32_t op) {
 	return NULL;
 };
 
+/*
+2748 array_contains
+DATA(insert OID = 2749 (  arraycontained	   PGNSP PGUID 12 1 0 0 0 f f f f t f i 2 0 16 "2277 2277" _null_ _null_ _null_ _null_ arraycontained _null_ _null_ _null_ ));
+
+*/
+
 static inline int32_t pg_proc_to_op(int32_t funcid) {
 	switch (funcid) {
 	case 60:   // PG_PROC_booleq:
@@ -177,6 +183,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 2340: // PG_PROC_date_eq_timestamp:
 	case 2353: // PG_PROC_date_eq_timestamptz:
 	case 1718: // PG_PROC_numeric_eq:
+	case 744:  // PG_PROC_array_eq;
 		return XRG_OP_EQ;
 
 	case 84:   // PG_PROC_boolne:
@@ -202,6 +209,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 2343: // PG_PROC_date_ne_timestamp:
 	case 2356: // PG_PROC_date_ne_timestamptz:
 	case 1719: // PG_PROC_numeric_ne:
+	case 390:  // PG_PROC_array_ne:
 		return XRG_OP_NE;
 
 	case 1246: // PG_PROC_charlt:
@@ -226,6 +234,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 2338: // PG_PROC_date_lt_timestamp:
 	case 2351: // PG_PROC_date_lt_timestamptz:
 	case 1722: // PG_PROC_numeric_lt:
+	case 391:  // PG_PROC_array_lt:
 		return XRG_OP_LT;
 
 	case 72:   // PG_PROC_charle:
@@ -250,6 +259,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 2339: // PG_PROC_date_le_timestamp:
 	case 2352: // PG_PROC_date_le_timestamptz:
 	case 1723: // PG_PROC_numeric_le:
+	case 393:  // PG_PROC_array_le:
 		return XRG_OP_LE;
 
 	case 73:   // PG_PROC_chargt:
@@ -274,6 +284,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 2341: // PG_PROC_date_gt_timestamp:
 	case 2354: // PG_PROC_date_gt_timestamptz:
 	case 1720: // PG_PROC_numeric_gt:
+	case 392:  // PG_PROC_array_gt:
 		return XRG_OP_GT;
 
 	case 74:   // PG_PROC_charge:
@@ -298,6 +309,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 2342: // PG_PROC_date_ge_timestamp:
 	case 2355: // PG_PROC_date_ge_timestamptz:
 	case 1721: // PG_PROC_numeric_ge:
+	case 396:  // PG_PROC_array_ge:
 		return XRG_OP_GE;
 
 	case 176:  // PG_PROC_int2pl:
