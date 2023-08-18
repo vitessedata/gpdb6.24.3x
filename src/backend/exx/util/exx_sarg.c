@@ -457,6 +457,149 @@ static bool op_is_time_related(Oid oid) {
 	return false;
 }
 
+
+static void pg_typ_to_string(StringInfo str, Oid t, int32_t typmod) {
+    switch (t) {
+    case BOOLOID: {
+		appendStringInfoString(str, "bool");
+        return;
+	}
+    case 1000: // array of BOOLOID
+	{
+		appendStringInfoString(str, "bool[]");
+        return;
+	}
+    case INT2OID: {
+		appendStringInfoString(str, "int2");
+        return;
+	}
+    case INT2ARRAYOID: {
+		appendStringInfoString(str, "int2[]");
+        return;
+	}
+    case INT4OID: {
+		appendStringInfoString(str, "int4");
+        return;
+	}
+    case INT4ARRAYOID: {
+		appendStringInfoString(str, "int4[]");
+        return;
+	}
+    case INT8OID: {
+		appendStringInfoString(str, "int8");
+        return;
+	}
+    case INT8ARRAYOID: {
+		appendStringInfoString(str, "int8[]");
+        return;
+	}
+    case DATEOID: {
+		appendStringInfoString(str, "date");
+        return;
+    }
+    case 1182: // array of date
+    {
+		appendStringInfoString(str, "date[]");
+        return;
+    }
+    case TIMEOID: {
+		appendStringInfoString(str, "time");
+        return;
+	}
+    case 1183: // array of time
+    {
+		appendStringInfoString(str, "time[]");
+        return;
+    }
+    case TIMESTAMPOID: {
+		appendStringInfoString(str, "timestamp");
+        return;
+    }
+    case 1115: // array of timestamp
+    {
+		appendStringInfoString(str, "timestamp[]");
+        return;
+    }
+    case TIMESTAMPTZOID: {
+		appendStringInfoString(str, "timestamptz");
+        return;
+    }
+    case 1185: // array of timestamptz
+    {
+		appendStringInfoString(str, "timestamptz[]");
+        return;
+    }
+    case FLOAT4OID: {
+		appendStringInfoString(str, "real");
+        return;
+    }
+    case FLOAT4ARRAYOID: {
+		appendStringInfoString(str, "real[]");
+        return;
+    }
+    case FLOAT8OID: {
+		appendStringInfoString(str, "double precision");
+        return;
+    }
+    case FLOAT8ARRAYOID: {
+		appendStringInfoString(str, "double precision[]");
+        return;
+    }
+    // case UUIDOD:
+    // case 2951: // Array of UUID
+    case INTERVALOID: {
+		appendStringInfoString(str, "interval");
+        return;
+    }
+    case 1187: // array of interval
+    {
+		appendStringInfoString(str, "interval[]");
+        return;
+    }
+    case NUMERICOID: {
+        // Const will have typmod == -1. Set it to INT64 decimal first.
+        int precision = 0;
+        int scale = 0;
+        if (typmod >= (int32)VARHDRSZ) {
+            int32_t tmp = typmod - VARHDRSZ;
+            precision = (tmp >> 16) & 0xFFFF;
+            scale = tmp & 0xFFFF;
+        }
+        appendStringInfo(str, "numeric(%d,%d)", precision, scale);
+        return;
+    }
+    case 1231: // array of NUMERIC
+    {
+        int precision = 0;
+        int scale = 0;
+        if (typmod >= (int32)VARHDRSZ) {
+            int32_t tmp = typmod - VARHDRSZ;
+            precision = (tmp >> 16) & 0xFFFF;
+            scale = tmp & 0xFFFF;
+        }
+        appendStringInfo(str, "numeric(%d,%d)[]", precision, scale);
+        return;
+    }
+    case BPCHAROID:
+    case TEXTOID:
+    case VARCHAROID: {
+		appendStringInfo(str, "text");
+        return;
+    }
+    case TEXTARRAYOID:
+    case 1014: // array of bpchar
+    case 1015: // arrayof varchar
+    {
+		appendStringInfo(str, "text[]");
+        return;
+    }
+    default: {
+		appendStringInfo(str, "text");
+        return;
+    }
+  }
+}
+
 static void date_to_string(StringInfo str, int32_t d) {
 	struct tm tm;
 	time_t t = d * 24 * 3600;
@@ -671,7 +814,8 @@ const char *op_arraytype_to_string(Const *c) {
 		}
 
 		//elog(LOG, "string: numargs = %d, consttype = %d", numargs, c->consttype);
-		appendStringInfoCharMacro(&qual, '(');
+		appendStringInfoString(&qual, "ARRAY");
+		appendStringInfoCharMacro(&qual, '[');
 		for (int i = 0; i < numargs; i++) {
 			if (i > 0) {
 				appendStringInfoCharMacro(&qual, ',');
@@ -685,11 +829,14 @@ const char *op_arraytype_to_string(Const *c) {
 			appendStringInfoCharMacro(&qual, '\'');
 			p += INTALIGN(datalen); // data is 4-byte aligned
 		}
-		appendStringInfoCharMacro(&qual, ')');
+		appendStringInfoCharMacro(&qual, ']');
+		appendStringInfoString(&qual, "::");
+		pg_typ_to_string(&qual, c->consttype, c->consttypmod);
 		return qual.data;
 	} else if (strcmp(ts, "decimal") == 0) {
 		//elog(LOG, "decimal: numargs = %d, consttype = %d", numargs, c->consttype);
-		appendStringInfoCharMacro(&qual, '(');
+		appendStringInfoString(&qual, "ARRAY");
+		appendStringInfoCharMacro(&qual, '[');
 		for (int i = 0; i < numargs; i++) {
 			if (i > 0) {
 				appendStringInfoCharMacro(&qual, ',');
@@ -697,15 +844,20 @@ const char *op_arraytype_to_string(Const *c) {
 			int32_t datalen = VARSIZE_ANY(p);
 			//int32_t len = VARSIZE_ANY_EXHDR(p);
 			//elog(LOG, "decimal: aligned = %d, datalen = %d len = %d", INTALIGN(datalen), datalen, len);
+			appendStringInfoCharMacro(&qual, '\'');
 			appendStringInfoString(&qual, op_sarg_const_str(ts, (Datum)p, 0));
+			appendStringInfoCharMacro(&qual, '\'');
 			p += INTALIGN(datalen); // data is 4-byte aligned
 		}
-		appendStringInfoCharMacro(&qual, ')');
+		appendStringInfoCharMacro(&qual, ']');
+		appendStringInfoString(&qual, "::");
+		pg_typ_to_string(&qual, c->consttype, c->consttypmod);
 		return qual.data;
 	}
 
 	//elog(LOG, "numargs = %d, consttype = %d, constlen = %d", numargs, c->consttype, c->constlen);
-	appendStringInfoCharMacro(&qual, '(');
+	appendStringInfoString(&qual, "ARRAY");
+	appendStringInfoCharMacro(&qual, '[');
 	for (int i = 0; i < numargs; i++) {
 		if (i > 0) {
 			appendStringInfoCharMacro(&qual, ',');
@@ -740,6 +892,8 @@ const char *op_arraytype_to_string(Const *c) {
 
 		p += itemsz;
 	}
-	appendStringInfoCharMacro(&qual, ')');
+	appendStringInfoCharMacro(&qual, ']');
+	appendStringInfoString(&qual, "::");
+	pg_typ_to_string(&qual, c->consttype, c->consttypmod);
 	return qual.data;
 }
