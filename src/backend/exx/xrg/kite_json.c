@@ -353,6 +353,7 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		//op_is_sargable(op->opno, true);
 		//std::string opstr = op_sarg_str(op->opno, false);
 		int opcode = pg_proc_to_op(op->opfuncid);
+		if (opcode == -1) elog_node_display(LOG, "OpExpr", op, true);
 		Insist(opcode != -1);
 		const char *opstr = xrg_opexpr_str(opcode);
 
@@ -427,17 +428,19 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		int32_t op = pg_proc_to_op(sp->opfuncid);
 		switch (op) {
 		case XRG_OP_EQ:
-			stringbuffer_append_string(strbuf, " IN ");
+			stringbuffer_append_string(strbuf, " = ANY ");
 			break;
 		case XRG_OP_NE:
-			stringbuffer_append_string(strbuf, " NOT IN ");
+			stringbuffer_append_string(strbuf, " != ALL ");
 			break;
 		default:
 			elog(ERROR, "ScalarArrayOpExpr: Invalid operation. (op = %d, funcid = %d)", sp->opno, sp->opfuncid);
 			break;
 		}
 
+		stringbuffer_append_string(strbuf, "(");
 		traverse_qual_expr(ex, right, strbuf);
+		stringbuffer_append_string(strbuf, ")");
 		return;
 	} else if (IsA(expr, NullTest)) {
 		NullTest *ntest = (NullTest *)expr;
