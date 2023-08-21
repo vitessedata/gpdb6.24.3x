@@ -161,12 +161,6 @@ static inline const char *xrg_opexpr_str(int32_t op) {
 	return NULL;
 };
 
-/*
-2748 array_contains
-DATA(insert OID = 2749 (  arraycontained	   PGNSP PGUID 12 1 0 0 0 f f f f t f i 2 0 16 "2277 2277" _null_ _null_ _null_ _null_ arraycontained _null_ _null_ _null_ ));
-
-*/
-
 static inline int32_t pg_proc_to_op(int32_t funcid) {
 	switch (funcid) {
 	case 60:   // PG_PROC_booleq:
