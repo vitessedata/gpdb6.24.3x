@@ -76,6 +76,9 @@ enum xrg_opexpr_t {
 	XRG_OP_FLOOR,
 	XRG_OP_CEIL,
 	XRG_OP_RANDOM,
+	XRG_OP_ARRAY_CONTAINS,
+	XRG_OP_ARRAY_CONTAINED,
+	XRG_OP_ARRAY_OVERLAP,
 };
 
 static inline const char *xrg_opexpr_str(int32_t op) {
@@ -146,6 +149,12 @@ static inline const char *xrg_opexpr_str(int32_t op) {
 		return XRG_OP_CEIL_STR;
 	case XRG_OP_RANDOM:
 		return XRG_OP_RANDOM_STR;
+	case XRG_OP_ARRAY_CONTAINS:
+		return "@>";
+	case XRG_OP_ARRAY_CONTAINED:
+		return "<@";
+	case XRG_OP_ARRAY_OVERLAP:
+		return "&&";
 	default:
 		return NULL;
 	}
@@ -381,6 +390,12 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 		return XRG_OP_TEXTLIKE;
 	case 851: // PG_PROC_textnlike:
 		return XRG_OP_TEXTNLIKE;
+	case 2747: // PG_PROC_arrayoverlap:
+		return XRG_OP_ARRAY_OVERLAP;
+	case 2748: // PG_PROC_arraycontains:
+		return XRG_OP_ARRAY_CONTAINS;
+	case 2749: // PG_PROC_arraycontained:
+		return XRG_OP_ARRAY_CONTAINED;
 	default:
 		/* Unsupported. */
 		return -1;
