@@ -514,10 +514,11 @@ bool node_to_xexpr(Node *node, void *ptr) {
 	return expression_tree_walker(node, (GP_FUNC_PTR_MESS)node_to_xexpr, parent);
 }
 
-bool not_required_fill_xexpr(void *ptr) {
+bool not_required_fill_xexpr(Node *node, void *ptr) {
 	xex_list_t *parent = (xex_list_t *)ptr;
 	xex_list_t *list = xex_list_create();
 	xex_list_append_string(list, INVALID_TYPE);
+	node_to_xexpr(node, list);
 	xex_list_append_list(parent, list);
 
 	return true;

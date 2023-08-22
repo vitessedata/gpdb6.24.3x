@@ -500,6 +500,17 @@ void traverse(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_l
 		traverse_casewhen(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, CASETESTEXPR_TYPE) == 0) {
 		traverse_casetestexpr(list, tupdesc, strbuf, pgtargetlist);
+	} else if (strcmp(type, INVALID_TYPE) == 0) {
+		// even this node is INVALID, 2nd element in the list still holds the original target
+		// VAR with varno = INNER_VAR or OUTER_VAR may refer to the invalid target in the targetlist
+		// so it is important to able to traverse the INVALID target to get the expression.
+		int n = xex_list_length(list);
+		Insist(n == 2);
+		xex_object_t *obj = xex_list_get(list, 1);
+		Insist(obj);
+		xex_list_t *expr = xex_to_list(obj);
+		Insist(expr);
+		traverse(expr, tupdesc, strbuf, pgtargetlist);
 	}
 }
 

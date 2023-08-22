@@ -238,7 +238,7 @@ void xscan_build_kite_query(ExternalScan *xscan, Agg *agg, PlannedStmt *stmt) {
 
 		} else {
 			// add not_required type to xexpr
-			not_required_fill_xexpr(tgtlist);
+			not_required_fill_xexpr((Node *)tle->expr, tgtlist);
 		}
 	}
 

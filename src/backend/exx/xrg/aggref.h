@@ -23,7 +23,7 @@ typedef bool (*GP_FUNC_PTR_MESS)();
 void xscan_build_kite_query(ExternalScan *xscan, Agg *agg, PlannedStmt *stmt);
 
 bool node_to_xexpr(Node *node, void *ptr);
-bool not_required_fill_xexpr(void *ptr);
+bool not_required_fill_xexpr(Node *node, void *ptr);
 
 #ifdef __cplusplus
 }
