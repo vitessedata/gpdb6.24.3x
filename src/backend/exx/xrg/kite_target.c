@@ -238,14 +238,16 @@ static void traverse_var(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *st
 
 	Insist(xex_list_get_int32(list, 7, &varoattno) == 0); // varoattno
 
-	if (varno == INNER_VAR || varno == OUTER_VAR) {
+	if (IS_SPECIAL_VARNO(varno) && varoattno == 0) {
 		// varattno becomes the index of the proper element fo that subplans's target list 
+		// varoattno = 0 means ALL columns or expression so get from target list by varattno
 		xex_object_t *obj = xex_list_get(pgtargetlist, varattno-1);
 		Insist(obj);
 		xex_list_t *var = xex_to_list(obj);
 		Insist(var);
 		traverse(var, tupdesc, strbuf, pgtargetlist);
 	} else {
+		// even varno is SPECIAL but old varattno (varoattno is non-zero), follow the original varoattno
 		char *cn = NameStr(tupdesc->attrs[varoattno - 1]->attname);
 		stringbuffer_append_string(strbuf, cn);
 	}
