@@ -37,6 +37,7 @@
 #define XRG_OP_CEIL_STR "CEIL"
 #define XRG_OP_MOD_STR "MOD"
 #define XRG_OP_RANDOM_STR "RANDOM"
+#define XRG_OP_ARRAY_LENGTH_STR "ARRAY_LENGTH"
 
 enum xrg_opexpr_t {
 	XRG_OP_UNKNOWN = 0,
@@ -79,6 +80,7 @@ enum xrg_opexpr_t {
 	XRG_OP_ARRAY_CONTAINS,
 	XRG_OP_ARRAY_CONTAINED,
 	XRG_OP_ARRAY_OVERLAP,
+	XRG_OP_ARRAY_LENGTH,
 };
 
 static inline const char *xrg_opexpr_str(int32_t op) {
@@ -155,6 +157,8 @@ static inline const char *xrg_opexpr_str(int32_t op) {
 		return "<@";
 	case XRG_OP_ARRAY_OVERLAP:
 		return "&&";
+	case XRG_OP_ARRAY_LENGTH:
+		return XRG_OP_ARRAY_LENGTH_STR;
 	default:
 		return NULL;
 	}
@@ -466,6 +470,8 @@ static inline int32_t pg_func_to_op(int32_t funcid) {
 	case 2557:
 	case 2558:
 		return XRG_OP_CAST;
+	case 2176: // array_length
+		return XRG_OP_ARRAY_LENGTH;
 	default:
 		/* unsupported */
 		return -1;

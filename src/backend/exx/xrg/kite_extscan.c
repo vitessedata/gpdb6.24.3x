@@ -139,7 +139,7 @@ static void setup_targetlist_from_xexpr(kite_extscan_t *scan, xex_list_t *xexpr)
 		Insist(obj);
 		xex_list_t *agg = xex_to_list(obj);
 		Insist(agg);
-		kite_target_t *tgt = kite_target_from_xexpr(agg, exec_tdesc->attrs[i], scan_tdesc, &start_idx);
+		kite_target_t *tgt = kite_target_from_xexpr(agg, exec_tdesc->attrs[i], scan_tdesc, &start_idx, aggrefs);
 		Insist(tgt);
 		scan->m_targetlist = lappend(scan->m_targetlist, tgt);
 	}
@@ -242,6 +242,7 @@ static void kite_extscan_setup_targetlist(kite_extscan_t *scan) {
 		const char *endp;
 		xex_parse_error_t err;
 
+		//elog(LOG, "XEXPR %s", es->exx_bc);
 		xex_object_t *obj = xex_parse(es->exx_bc, strlen(es->exx_bc), &endp, &err);
 		if (!obj) {
 			elog(ERROR, "xexpr error: %s. [linenum=%d, offset=%d]", err.errmsg, err.linenum, err.lineoff);

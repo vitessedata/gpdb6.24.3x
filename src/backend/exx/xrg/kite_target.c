@@ -29,7 +29,7 @@ static const char *aggfnoid_to_opstr(Oid aggfnoid) {
 }
 
 /* xexpr parsing functions */
-static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid funcid, funcresulttype, funccollid, inputcollid;
 	int8_t funcretset, funcvariadic, is_tablefunc;
@@ -62,7 +62,7 @@ static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 			Insist(obj);
 			xex_list_t *l = xex_to_list(obj);
 			Insist(l);
-			traverse(l, tupdesc, strbuf);
+			traverse(l, tupdesc, strbuf, pgtargetlist);
 		}
 	} else if (op != -1) {
 		stringbuffer_append_string(strbuf, (char *)xrg_opexpr_str(op));
@@ -75,7 +75,7 @@ static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 			Insist(obj);
 			xex_list_t *l = xex_to_list(obj);
 			Insist(l);
-			traverse(l, tupdesc, strbuf);
+			traverse(l, tupdesc, strbuf, pgtargetlist);
 		}
 		stringbuffer_append(strbuf, ')');
 	} else {
@@ -83,7 +83,7 @@ static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 	}
 }
 
-static void traverse_opexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_opexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid opno, opfuncid, opresulttype, opcollid, inputcollid;
 	int8_t opretset;
@@ -124,29 +124,29 @@ static void traverse_opexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t 
 	Insist(rtype);
 
 	if (strcmp(ltype, CASETESTEXPR_TYPE) == 0) {
-		traverse(right, tupdesc, strbuf);
+		traverse(right, tupdesc, strbuf, pgtargetlist);
 	} else {
 		if (strcmp(ltype, OPEXPR_TYPE) == 0) {
 			stringbuffer_append(strbuf, '(');
-			traverse(left, tupdesc, strbuf);
+			traverse(left, tupdesc, strbuf, pgtargetlist);
 			stringbuffer_append(strbuf, ')');
 		} else {
-			traverse(left, tupdesc, strbuf);
+			traverse(left, tupdesc, strbuf, pgtargetlist);
 		}
 		stringbuffer_append(strbuf, ' ');
 		stringbuffer_append_string(strbuf, (char *)opstr);
 		stringbuffer_append(strbuf, ' ');
 		if (strcmp(rtype, OPEXPR_TYPE) == 0) {
 			stringbuffer_append(strbuf, '(');
-			traverse(right, tupdesc, strbuf);
+			traverse(right, tupdesc, strbuf, pgtargetlist);
 			stringbuffer_append(strbuf, ')');
 		} else {
-			traverse(right, tupdesc, strbuf);
+			traverse(right, tupdesc, strbuf, pgtargetlist);
 		}
 	}
 }
 
-static void traverse_const(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_const(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type, *constvalue;
 	Oid consttype, constcollid;
 	int32_t consttypmod, constlen;
@@ -213,7 +213,7 @@ static void traverse_const(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *
 	}
 }
 
-static void traverse_var(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_var(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid varno, vartype, varlevelsup, varnoold;
 	int32_t varattno, vartypmod, varoattno;
@@ -238,11 +238,20 @@ static void traverse_var(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *st
 
 	Insist(xex_list_get_int32(list, 7, &varoattno) == 0); // varoattno
 
-	char *cn = NameStr(tupdesc->attrs[varoattno - 1]->attname);
-	stringbuffer_append_string(strbuf, cn);
+	if (varno == INNER_VAR || varno == OUTER_VAR) {
+		// varattno becomes the index of the proper element fo that subplans's target list 
+		xex_object_t *obj = xex_list_get(pgtargetlist, varattno-1);
+		Insist(obj);
+		xex_list_t *var = xex_to_list(obj);
+		Insist(var);
+		traverse(var, tupdesc, strbuf, pgtargetlist);
+	} else {
+		char *cn = NameStr(tupdesc->attrs[varoattno - 1]->attname);
+		stringbuffer_append_string(strbuf, cn);
+	}
 }
 
-static void traverse_nullifexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_nullifexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid opno, opfuncid, opresulttype, inputcollid;
 	int8_t opretset;
@@ -280,23 +289,23 @@ static void traverse_nullifexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffe
 	stringbuffer_append_string(strbuf, "NULLIF(");
 	if (strcmp(ltype, OPEXPR_TYPE) == 0) {
 		stringbuffer_append(strbuf, '(');
-		traverse(left, tupdesc, strbuf);
+		traverse(left, tupdesc, strbuf, pgtargetlist);
 		stringbuffer_append(strbuf, ')');
 	} else {
-		traverse(left, tupdesc, strbuf);
+		traverse(left, tupdesc, strbuf, pgtargetlist);
 	}
 	stringbuffer_append(strbuf, ',');
 	if (strcmp(rtype, OPEXPR_TYPE) == 0) {
 		stringbuffer_append(strbuf, '(');
-		traverse(right, tupdesc, strbuf);
+		traverse(right, tupdesc, strbuf, pgtargetlist);
 		stringbuffer_append(strbuf, ')');
 	} else {
-		traverse(right, tupdesc, strbuf);
+		traverse(right, tupdesc, strbuf, pgtargetlist);
 	}
 	stringbuffer_append(strbuf, ')');
 }
 
-static void traverse_coalesceexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_coalesceexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	uint32_t coalescetype, coalescecollid;
 
@@ -324,12 +333,12 @@ static void traverse_coalesceexpr(xex_list_t *list, TupleDesc tupdesc, stringbuf
 		obj = xex_list_get(args, i);
 		xex_list_t *l = xex_to_list(obj);
 		Insist(l);
-		traverse(l, tupdesc, strbuf);
+		traverse(l, tupdesc, strbuf, pgtargetlist);
 	}
 	stringbuffer_append(strbuf, ')');
 }
 
-static void traverse_boolexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_boolexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type, *opstr;
 
 	int n = xex_list_length(list);
@@ -343,7 +352,7 @@ static void traverse_boolexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 	// args
 }
 
-static void traverse_caseexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_caseexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid casetype, casecollid;
 
@@ -364,7 +373,7 @@ static void traverse_caseexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 	Insist(obj);
 	xex_list_t *arg = xex_to_list(obj);
 	if (arg) {
-		traverse(arg, tupdesc, strbuf);
+		traverse(arg, tupdesc, strbuf, pgtargetlist);
 		stringbuffer_append(strbuf, ' ');
 	}
 
@@ -379,7 +388,7 @@ static void traverse_caseexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 		Insist(obj);
 		xex_list_t *l = xex_to_list(obj);
 		Insist(l);
-		traverse(l, tupdesc, strbuf);
+		traverse(l, tupdesc, strbuf, pgtargetlist);
 		stringbuffer_append(strbuf, ' ');
 	}
 
@@ -390,11 +399,11 @@ static void traverse_caseexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 	Insist(obj);
 	xex_list_t *defresult = xex_to_list(obj);
 	Insist(defresult);
-	traverse(defresult, tupdesc, strbuf);
+	traverse(defresult, tupdesc, strbuf, pgtargetlist);
 	stringbuffer_append_string(strbuf, " END");
 }
 
-static void traverse_scalararrayopexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_scalararrayopexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid opno, opfuncid, inputcollid;
 	int8_t useOr;
@@ -420,7 +429,7 @@ static void traverse_scalararrayopexpr(xex_list_t *list, TupleDesc tupdesc, stri
 	Insist(args && xex_list_length(args) == 2);
 }
 
-static void traverse_casewhen(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_casewhen(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	int n = xex_list_length(list);
 	Insist(n == 3);
@@ -434,7 +443,7 @@ static void traverse_casewhen(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 	Insist(obj);
 	xex_list_t *expr = xex_to_list(obj);
 
-	traverse(expr, tupdesc, strbuf);
+	traverse(expr, tupdesc, strbuf, pgtargetlist);
 
 	stringbuffer_append_string(strbuf, " THEN ");
 
@@ -442,10 +451,10 @@ static void traverse_casewhen(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 	obj = xex_list_get(list, 2); // result
 	Insist(obj);
 	xex_list_t *result = xex_to_list(obj);
-	traverse(result, tupdesc, strbuf);
+	traverse(result, tupdesc, strbuf, pgtargetlist);
 }
 
-static void traverse_casetestexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+static void traverse_casetestexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid typeId, collation;
 	int32_t typeMod;
@@ -463,36 +472,36 @@ static void traverse_casetestexpr(xex_list_t *list, TupleDesc tupdesc, stringbuf
 	// args
 }
 
-void traverse(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf) {
+void traverse(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type = xex_list_get_string(list, 0);
 	Insist(type);
 
 	if (strcmp(type, VAR_TYPE) == 0) {
-		traverse_var(list, tupdesc, strbuf);
+		traverse_var(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, CONST_TYPE) == 0) {
-		traverse_const(list, tupdesc, strbuf);
+		traverse_const(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, FUNCEXPR_TYPE) == 0) {
-		traverse_funcexpr(list, tupdesc, strbuf);
+		traverse_funcexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, OPEXPR_TYPE) == 0) {
-		traverse_opexpr(list, tupdesc, strbuf);
+		traverse_opexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, NULLIFEXPR_TYPE) == 0) {
-		traverse_nullifexpr(list, tupdesc, strbuf);
+		traverse_nullifexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, COALESCEEXPR_TYPE) == 0) {
-		traverse_coalesceexpr(list, tupdesc, strbuf);
+		traverse_coalesceexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, BOOLEXPR_TYPE) == 0) {
-		traverse_boolexpr(list, tupdesc, strbuf);
+		traverse_boolexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, CASEEXPR_TYPE) == 0) {
-		traverse_caseexpr(list, tupdesc, strbuf);
+		traverse_caseexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, SCALARARRAYOPEXPR_TYPE) == 0) {
-		traverse_scalararrayopexpr(list, tupdesc, strbuf);
+		traverse_scalararrayopexpr(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, CASEWHEN_TYPE) == 0) {
-		traverse_casewhen(list, tupdesc, strbuf);
+		traverse_casewhen(list, tupdesc, strbuf, pgtargetlist);
 	} else if (strcmp(type, CASETESTEXPR_TYPE) == 0) {
-		traverse_casetestexpr(list, tupdesc, strbuf);
+		traverse_casetestexpr(list, tupdesc, strbuf, pgtargetlist);
 	}
 }
 
-static void var_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx) {
+static void var_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid varno, vartype, varlevelsup, varnoold;
 	int32_t varattno, vartypmod, varoattno;
@@ -525,7 +534,7 @@ static void var_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tup
 	target->tuplist = lappend(target->tuplist, pstrdup(cn));
 }
 
-static void const_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx) {
+static void const_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist) {
 	const char *type, *constvalue;
 	Oid consttype, constcollid;
 	int32_t consttypmod, constlen;
@@ -559,7 +568,7 @@ static void const_to_target(kite_target_t *target, xex_list_t *list, TupleDesc t
 	target->tuplist = lappend(target->tuplist, pstrdup(constvalue));
 }
 
-static void opexpr_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx) {
+static void opexpr_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist) {
 	target->decode = decode_var;
 	target->attrs = lappend_int(target->attrs, *start_idx);
 	(*start_idx)++;
@@ -567,14 +576,14 @@ static void opexpr_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 	stringbuffer_t *strbuf = stringbuffer_new();
 	Insist(strbuf);
 
-	traverse(list, tupdesc, strbuf);
+	traverse(list, tupdesc, strbuf, pgtargetlist);
 
 	target->tuplist = lappend(target->tuplist, stringbuffer_to_string(strbuf));
 
 	stringbuffer_release(strbuf);
 }
 
-static void funcexpr_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx) {
+static void funcexpr_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist) {
 	target->decode = decode_var;
 	target->attrs = lappend_int(target->attrs, *start_idx);
 	(*start_idx)++;
@@ -582,14 +591,14 @@ static void funcexpr_to_target(kite_target_t *target, xex_list_t *list, TupleDes
 	stringbuffer_t *strbuf = stringbuffer_new();
 	Insist(strbuf);
 
-	traverse(list, tupdesc, strbuf);
+	traverse(list, tupdesc, strbuf, pgtargetlist);
 
 	target->tuplist = lappend(target->tuplist, stringbuffer_to_string(strbuf));
 
 	stringbuffer_release(strbuf);
 }
 
-static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx) {
+static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist) {
 
 	const char *type;
 	Oid aggfnoid, aggtype, aggcollid;
@@ -673,7 +682,7 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 			Insist(obj);
 			xex_list_t *arg = xex_to_list(obj);
 			Insist(arg);
-			traverse(arg, tupdesc, strbuf);
+			traverse(arg, tupdesc, strbuf, pgtargetlist);
 		}
 		stringbuffer_append(strbuf, ')');
 	}
@@ -691,7 +700,7 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 			Insist(obj);
 			xex_list_t *arg = xex_to_list(obj);
 			Insist(arg);
-			traverse(arg, tupdesc, strbuf);
+			traverse(arg, tupdesc, strbuf, pgtargetlist);
 		}
 		stringbuffer_append(strbuf, ')');
 		target->tuplist = lappend(target->tuplist, stringbuffer_to_string(strbuf));
@@ -707,7 +716,7 @@ kite_target_t *kite_target_create() {
 	return target;
 }
 
-kite_target_t *kite_target_from_xexpr(xex_list_t *list, const Form_pg_attribute attr, TupleDesc tupdesc, int *start_idx) {
+kite_target_t *kite_target_from_xexpr(xex_list_t *list, const Form_pg_attribute attr, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist) {
 
 	kite_target_t *target = kite_target_create();
 
@@ -720,15 +729,15 @@ kite_target_t *kite_target_from_xexpr(xex_list_t *list, const Form_pg_attribute 
 		target->attrs = 0;
 		target->tuplist = 0;
 	} else if (strcmp(type, AGGREF_TYPE) == 0) {
-		aggref_to_target(target, list, tupdesc, start_idx);
+		aggref_to_target(target, list, tupdesc, start_idx, pgtargetlist);
 	} else if (strcmp(type, VAR_TYPE) == 0) {
-		var_to_target(target, list, tupdesc, start_idx);
+		var_to_target(target, list, tupdesc, start_idx, pgtargetlist);
 	} else if (strcmp(type, CONST_TYPE) == 0) {
-		const_to_target(target, list, tupdesc, start_idx);
+		const_to_target(target, list, tupdesc, start_idx, pgtargetlist);
 	} else if (strcmp(type, FUNCEXPR_TYPE) == 0) {
-		funcexpr_to_target(target, list, tupdesc, start_idx);
+		funcexpr_to_target(target, list, tupdesc, start_idx, pgtargetlist);
 	} else if (strcmp(type, OPEXPR_TYPE) == 0) {
-		opexpr_to_target(target, list, tupdesc, start_idx);
+		opexpr_to_target(target, list, tupdesc, start_idx, pgtargetlist);
 	} else {
 		elog(ERROR, "xexpr_to_target: type %s not supported", type);
 	}

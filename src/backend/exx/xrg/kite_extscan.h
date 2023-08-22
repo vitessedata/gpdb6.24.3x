@@ -65,11 +65,11 @@ typedef struct kite_target_t {
 
 // start_idx is the column idx from kite and will be changed to next start idx for the next call
 kite_target_t *kite_target_create(void);
-kite_target_t *kite_target_from_xexpr(xex_list_t *, const Form_pg_attribute attr, TupleDesc tupdesc, int *start_idx);
+kite_target_t *kite_target_from_xexpr(xex_list_t *, const Form_pg_attribute attr, TupleDesc tupdesc, int *start_idx, xex_list_t *pgtargetlist);
 kite_target_t *kite_target_from_tupdesc(const Form_pg_attribute attr, TupleDesc tupdesc, int idx, int *start_idx);
 void kite_target_destroy(kite_target_t *);
 
-void traverse(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf);
+void traverse(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist);
 
 /* kite_extscan.c */
 typedef struct kite_extscan_t {

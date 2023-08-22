@@ -136,10 +136,16 @@ static char *generate_sql(kite_extscan_t *ex, xex_list_t *xexpr, List *targetlis
 
 	// group by
 	if (xexpr) {
+		// group by list
 		xex_object_t *obj = xex_list_get(xexpr, 0);
 		Insist(obj);
 		xex_list_t *gby = xex_to_list(obj);
 		Insist(gby);
+
+		// target list
+		obj = xex_list_get(xexpr, 1);
+		xex_list_t *tgtlist = xex_to_list(obj);
+		Insist(tgtlist);
 
 		if (xex_list_length(gby) > 0) {
 			stringbuffer_append_string(sbuf, " GROUP BY ");
@@ -153,7 +159,7 @@ static char *generate_sql(kite_extscan_t *ex, xex_list_t *xexpr, List *targetlis
 				Insist(obj);
 				xex_list_t *gbyitem = xex_to_list(obj);
 				Insist(gbyitem);
-				traverse(gbyitem, scan_tdesc, sbuf);
+				traverse(gbyitem, scan_tdesc, sbuf, tgtlist);
 			}
 		}
 	}
@@ -321,6 +327,7 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 	} else if (IsA(expr, FuncExpr)) {
 		FuncExpr *fp = (FuncExpr *)expr;
 		int opcode = pg_func_to_op(fp->funcid);
+		if (opcode == -1) elog_node_display(LOG, "FuncExpr", fp, true);
 		Insist(opcode != -1);
 		if (opcode == XRG_OP_CAST) {
 			ListCell *l;
