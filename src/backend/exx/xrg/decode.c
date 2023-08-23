@@ -301,12 +301,19 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
 	return 0;
 }
 
+/*
+ * the xrg_vector memory buffer is not same alignment as the array so
+ * we have to allocate the required aligned buffer and return to postgres
+ */
 static Datum decode_defaultav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
 	Insist(sz = xrg_array_size(arr));
 	ArrayType *pga = (ArrayType *) arr;
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
-	return PointerGetDatum(pga);
+	ArrayType *ret = (ArrayType *) palloc(sz);
+	memcpy(ret, pga, sz);
+
+	return PointerGetDatum(ret);
 }
 
 /* decode functions */
