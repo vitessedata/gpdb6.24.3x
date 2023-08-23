@@ -70,11 +70,17 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 	Insist(ltyp == XRG_LTYP_DATE);
 	Insist(itemsz == sizeof(int32_t));
 
+	// allocate aligned buffer
+	xrg_array_header_t *ret = (xrg_array_header_t *) palloc(sz);
+	memcpy(ret, arr, sz);
+	p = xrg_array_data_ptr(ret);
+	nullmap = xrg_array_nullbitmap(ret);
+
 	if (ndim == 0) {
-		ArrayType *ret = (ArrayType *) arr;
-		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
-		SET_VARSIZE(ret, sz);
-		return PointerGetDatum(ret);
+		ArrayType *pga = (ArrayType *) ret;
+		pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
+		SET_VARSIZE(pga, sz);
+		return PointerGetDatum(pga);
 	} 
 
 	for (int i = 0 ; i < ndims ; i++) {
@@ -83,7 +89,7 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 			p += sizeof(int32_t);
 		}
 	}
-	ArrayType *pga = (ArrayType *) arr;
+	ArrayType *pga = (ArrayType *) ret;
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
 	return PointerGetDatum(pga);
@@ -103,11 +109,17 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 	Insist(ltyp == XRG_LTYP_TIMESTAMP);
 	Insist(itemsz == sizeof(int64_t));
 
+	// allocate aligned buffer
+	xrg_array_header_t *ret = (xrg_array_header_t *) palloc(sz);
+	memcpy(ret, arr, sz);
+	p = xrg_array_data_ptr(ret);
+	nullmap = xrg_array_nullbitmap(ret);
+
 	if (ndim == 0) {
-		ArrayType *ret = (ArrayType *) arr;
-		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
-		SET_VARSIZE(ret, sz);
-		return PointerGetDatum(ret);
+		ArrayType *pga = (ArrayType *) ret;
+		pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
+		SET_VARSIZE(pga, sz);
+		return PointerGetDatum(pga);
 	} 
 
 	for (int i = 0 ; i < ndims ; i++) {
@@ -116,7 +128,7 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 			p += sizeof(int64_t);
 		}
 	}
-	ArrayType *pga = (ArrayType *) arr;
+	ArrayType *pga = (ArrayType *) ret;
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
 	return PointerGetDatum(pga);
