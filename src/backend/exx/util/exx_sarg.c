@@ -521,12 +521,12 @@ static void pg_typ_to_string(StringInfo str, Oid t, int32_t typmod) {
         return;
     }
     case TIMESTAMPTZOID: {
-		appendStringInfoString(str, "timestamptz");
+		appendStringInfoString(str, "timestamp");
         return;
     }
     case 1185: // array of timestamptz
     {
-		appendStringInfoString(str, "timestamptz[]");
+		appendStringInfoString(str, "timestamp[]");
         return;
     }
     case FLOAT4OID: {
