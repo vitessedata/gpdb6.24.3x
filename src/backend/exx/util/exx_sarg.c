@@ -127,7 +127,10 @@ Oid pg_array_to_element_oid(Oid t) {
 		791,  // CASHARRAYOID
 		1187, // INTERVALARRAYOID
 		1231, // NUMERICARRAYOID
-		1014, TEXTARRAYOID, 1015};
+		1014, // BPCHARARRAY
+		TEXTARRAYOID, 
+		1015 // VARCHARARRAY
+		};
 
 	int narraytypes = sizeof(array_type) / sizeof(Oid);
 
@@ -185,7 +188,7 @@ bool pg_typ_supported(Oid t, int32_t typmod, int32_t ndim) {
 		791,  // CASHARRAYOID
 		1187, // INTERVALARRAYOID
 		1231, // NUMERICARRAYOID
-		TEXTARRAYOID, 1014, 1015};
+		1014, TEXTARRAYOID, 1015};
 
 	int nbasictype = sizeof(basic_type) / sizeof(Oid);
 	for (int i = 0; i < nbasictype; i++) {

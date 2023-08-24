@@ -299,6 +299,7 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		case FLOAT8ARRAYOID:
 		case TEXTARRAYOID:
 		case 1014: // array of bpchar character(num)
+		case 1015: // array of varchar
 		case 1182: // array of DATE
 		case 1183: // array of TIME
 		case 1115: // array of TIMESTAMP
