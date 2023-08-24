@@ -66,7 +66,7 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 	int itemsz = xrg_typ_size(ptyp);
 	char *nullmap = xrg_array_nullbitmap(arr);
 
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DATE);
 	Insist(itemsz == sizeof(int32_t));
 
@@ -105,7 +105,7 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 	int itemsz = xrg_typ_size(ptyp);
 	char *nullmap = xrg_array_nullbitmap(arr);
 
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_TIMESTAMP);
 	Insist(itemsz == sizeof(int64_t));
 
@@ -150,7 +150,7 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 	int itemsz = xrg_typ_size(ptyp);
 	char *nullmap = xrg_array_nullbitmap(arr);
 
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_STRING);
 	Insist(itemsz == -1);
 
@@ -213,7 +213,7 @@ static Datum decode_dec64av(xrg_array_header_t *arr, int sz, int precision, int 
 	char dst[MAX_DEC128_STRLEN];
 	char *nullmap = xrg_array_nullbitmap(arr);
 
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 	Insist(ptyp == XRG_PTYP_INT64);
 	Insist(itemsz == sizeof(int64_t));
@@ -255,7 +255,7 @@ static Datum decode_dec128av(xrg_array_header_t *arr, int sz, int precision, int
 	char dst[MAX_DEC128_STRLEN];
 	char *nullmap = xrg_array_nullbitmap(arr);
 
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 	Insist(ptyp == XRG_PTYP_INT128);
 	Insist(itemsz == sizeof(__int128_t));
@@ -290,7 +290,7 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
 	int16_t ltyp = xrg_array_ltyp(arr);
 	int ndim = xrg_array_ndim(arr);
 
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 
 	if (ndim == 0) {
@@ -318,7 +318,7 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
  * we have to allocate the required aligned buffer and return to postgres
  */
 static Datum decode_defaultav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg_attr) {
-	Insist(sz = xrg_array_size(arr));
+	Insist(sz == xrg_array_size(arr));
 	ArrayType *pga = (ArrayType *) arr;
 	pga->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 	SET_VARSIZE(pga, sz);
