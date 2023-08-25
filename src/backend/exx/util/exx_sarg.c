@@ -807,7 +807,7 @@ static const char *const_to_text_array(Const *c) {
 
 	if (strcmp(xrg_typ, "string") == 0) {
 		if (c->constlen == -1) {
-            xrg_typ = "text";
+			xrg_typ = "text";
 		}
 	}
 
