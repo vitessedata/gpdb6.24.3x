@@ -788,6 +788,32 @@ char *op_sarg_const_str(const char *ts, Datum d, int *plen) {
 	return 0;
 }
 
+
+#if 1
+const char *op_arraytype_to_string(Const *c) {
+	int16_t ptyp, ltyp, precision, scale;
+	bool is_array = false;
+	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
+	Insist(is_array == true);
+
+	FmgrInfo flinfo;
+	memset(&flinfo, 0, sizeof(FmgrInfo));
+	//fmgr_info_cxt(fmgr_internal_function("array_out"), &flinfo, CurrentMemoryContext);
+	flinfo.fn_mcxt = CurrentMemoryContext;
+	flinfo.fn_addr = array_out;
+	flinfo.fn_nargs = 1;
+	flinfo.fn_strict = true;
+	char *array = OutputFunctionCall(&flinfo, c->constvalue);
+	StringInfoData qual;
+	initStringInfo(&qual);
+	appendStringInfo(&qual, "'%s'", array);
+	appendStringInfoString(&qual, "::");
+	pg_typ_to_string(&qual, c->consttype, c->consttypmod);
+	return qual.data;
+}
+
+#else
+
 const char *op_arraytype_to_string(Const *c) {
 #ifdef HAVE_INT64_TIMESTAMP
 	Timestamp epoch_ts = SetEpochTimestamp();
@@ -895,3 +921,4 @@ const char *op_arraytype_to_string(Const *c) {
 	pg_typ_to_string(&qual, c->consttype, c->consttypmod);
 	return qual.data;
 }
+#endif
