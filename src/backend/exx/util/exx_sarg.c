@@ -788,6 +788,67 @@ char *op_sarg_const_str(const char *ts, Datum d, int *plen) {
 	return 0;
 }
 
+static const char *const_to_text_array(Const *c) {
+	int16_t ptyp, ltyp, precision, scale;
+	bool is_array = false;
+	ptyp = ltyp = precision = scale = 0;
+	ArrayType *arr = DatumGetArrayTypeP(c->constvalue);
+	bool hasnull = ARR_HASNULL(arr);
+	bits8 *nullmap = ARR_NULLBITMAP(arr);
+	char *p = (char *)ARR_DATA_PTR(arr);
+	int *dims = ARR_DIMS(arr);
+	int numargs = dims[0];
+	int bitmask = 1;
+	
+	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
+	size_t itemsz = xrg_typ_size(ptyp);
+	const char *xrg_typ = xrg_typ_str(ptyp, ltyp, false); // only want to get primitive type
+	Insist(xrg_typ && *xrg_typ != 0 && is_array == true);
+
+	if (strcmp(xrg_typ, "string") == 0) {
+		if (c->constlen == -1) {
+            xrg_typ = "text";
+		}
+	}
+
+	StringInfoData qual;
+	initStringInfo(&qual);
+
+	appendStringInfoString(&qual, "ARRAY");
+	appendStringInfoCharMacro(&qual, '[');
+	for (int i = 0; i < numargs; i++) {
+		if (i > 0) {
+			appendStringInfoCharMacro(&qual, ',');
+		}
+
+		if (nullmap && (*nullmap & bitmask) == 0) {
+			appendStringInfoString(&qual, "NULL");
+		} else {
+			int32_t datalen = VARSIZE_ANY(p);
+			//int32_t len = VARSIZE_ANY_EXHDR(p);
+			//elog(LOG, "string: aligned = %d, datalen = %d len = %d, %s", INTALIGN(datalen), datalen, len, data);
+			appendStringInfoCharMacro(&qual, '\'');
+			// string escaped by the single quote
+			appendStringInfoString(&qual, op_sarg_const_str(xrg_typ, (Datum)p, 0));
+			appendStringInfoCharMacro(&qual, '\'');
+			p += INTALIGN(datalen); // data is 4-byte aligned
+		}
+
+		/* advance bitmap pointer if any */
+		if (nullmap) {
+			bitmask <<= 1;
+			if (bitmask == 0x100 /* (1<<8) */) {
+				nullmap++;
+				bitmask = 1;
+			}
+		}
+	}
+	appendStringInfoCharMacro(&qual, ']');
+	appendStringInfoString(&qual, "::");
+	pg_typ_to_string(&qual, c->consttype, c->consttypmod);
+	return qual.data;
+}
+
 const char *op_arraytype_to_string(Const *c) {
 #ifdef HAVE_INT64_TIMESTAMP
 	Timestamp epoch_ts = SetEpochTimestamp();
@@ -798,11 +859,9 @@ const char *op_arraytype_to_string(Const *c) {
 	ptyp = ltyp = precision = scale = 0;
 	ArrayType *arr = DatumGetArrayTypeP(c->constvalue);
 	int numargs = ARR_DIMS(arr)[0];
-	//int ndim = ARR_NDIM(arr);
-	//int hasnull = ARR_HASNULL(arr);
+	int ndim = ARR_NDIM(arr);
 	//int elemtype = ARR_ELEMTYPE(arr);
 	//int offset = ARR_DATA_OFFSET(arr);
-	char *p = (char *)ARR_DATA_PTR(arr);
 
 	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 	size_t itemsz = xrg_typ_size(ptyp);
@@ -811,53 +870,27 @@ const char *op_arraytype_to_string(Const *c) {
 
 	StringInfoData qual;
 	initStringInfo(&qual);
-	if (strcmp(ts, "string") == 0) {
-		if (c->constlen == -1) {
-			ts = "text";
-		}
 
-		//elog(LOG, "string: numargs = %d, consttype = %d", numargs, c->consttype);
-		appendStringInfoString(&qual, "ARRAY");
-		appendStringInfoCharMacro(&qual, '[');
-		for (int i = 0; i < numargs; i++) {
-			if (i > 0) {
-				appendStringInfoCharMacro(&qual, ',');
-			}
-			int32_t datalen = VARSIZE_ANY(p);
-			//int32_t len = VARSIZE_ANY_EXHDR(p);
-			//elog(LOG, "string: aligned = %d, datalen = %d len = %d, %s", INTALIGN(datalen), datalen, len, data);
-			appendStringInfoCharMacro(&qual, '\'');
-			// string escaped by the single quote
-			appendStringInfoString(&qual, op_sarg_const_str(ts, (Datum)p, 0));
-			appendStringInfoCharMacro(&qual, '\'');
-			p += INTALIGN(datalen); // data is 4-byte aligned
-		}
-		appendStringInfoCharMacro(&qual, ']');
-		appendStringInfoString(&qual, "::");
-		pg_typ_to_string(&qual, c->consttype, c->consttypmod);
-		return qual.data;
-	} else if (strcmp(ts, "decimal") == 0) {
-		//elog(LOG, "decimal: numargs = %d, consttype = %d", numargs, c->consttype);
-		appendStringInfoString(&qual, "ARRAY");
-		appendStringInfoCharMacro(&qual, '[');
-		for (int i = 0; i < numargs; i++) {
-			if (i > 0) {
-				appendStringInfoCharMacro(&qual, ',');
-			}
-			int32_t datalen = VARSIZE_ANY(p);
-			//int32_t len = VARSIZE_ANY_EXHDR(p);
-			//elog(LOG, "decimal: aligned = %d, datalen = %d len = %d", INTALIGN(datalen), datalen, len);
-			appendStringInfoCharMacro(&qual, '\'');
-			appendStringInfoString(&qual, op_sarg_const_str(ts, (Datum)p, 0));
-			appendStringInfoCharMacro(&qual, '\'');
-			p += INTALIGN(datalen); // data is 4-byte aligned
-		}
-		appendStringInfoCharMacro(&qual, ']');
-		appendStringInfoString(&qual, "::");
+	if (ndim == 0) {
+		appendStringInfoString(&qual, "ARRAY[]::");
 		pg_typ_to_string(&qual, c->consttype, c->consttypmod);
 		return qual.data;
 	}
 
+	if (ndim != 1) {
+		elog(ERROR, "dimension of constant array must be 1");
+	}
+
+	if (strcmp(ts, "string") == 0) {
+		return const_to_text_array(c);
+	} else if (strcmp(ts, "decimal") == 0) {
+		return const_to_text_array(c);
+	}
+
+	bool hasnull = ARR_HASNULL(arr);
+	bits8* nullmap = ARR_NULLBITMAP(arr);
+	char *p = (char *)ARR_DATA_PTR(arr);
+	int bitmask = 1;
 	//elog(LOG, "numargs = %d, consttype = %d, constlen = %d", numargs, c->consttype, c->constlen);
 	appendStringInfoString(&qual, "ARRAY");
 	appendStringInfoCharMacro(&qual, '[');
@@ -865,35 +898,48 @@ const char *op_arraytype_to_string(Const *c) {
 		if (i > 0) {
 			appendStringInfoCharMacro(&qual, ',');
 		}
-		if (strcmp(ts, "date") == 0) {
-			appendStringInfoCharMacro(&qual, '\'');
-			int32_t date = *((int32_t *)p) + (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
-			date_to_string(&qual, date);
-			appendStringInfoCharMacro(&qual, '\'');
-		} else if (strcmp(ts, "time") == 0) {
-			appendStringInfoCharMacro(&qual, '\'');
-			time_to_string(&qual, *((int64_t *)p));
-			appendStringInfoCharMacro(&qual, '\'');
-		} else if (strcmp(ts, "timestamp") == 0 || strcmp(ts, "timestamptz") == 0 ||
-				   strcmp(ts, "timestamp_micros") == 0 || strcmp(ts, "timestamptz_micros") == 0) {
-			appendStringInfoCharMacro(&qual, '\'');
-			timestamp_to_string(&qual, *((int64_t *)p) - epoch_ts);
-			appendStringInfoCharMacro(&qual, '\'');
-		} else if (strcmp(ts, "int8") == 0) {
-			int32_to_string(&qual, *((int8_t *)p));
-		} else if (strcmp(ts, "int16") == 0) {
-			int32_to_string(&qual, *((int16_t *)p));
-		} else if (strcmp(ts, "int32") == 0) {
-			int32_to_string(&qual, *((int32_t *)p));
-		} else if (strcmp(ts, "int64") == 0) {
-			int64_to_string(&qual, *((int64_t *)p));
-		} else if (strcmp(ts, "fp32") == 0 || strcmp(ts, "float") == 0) {
-			double_to_string(&qual, *((float *)p));
-		} else if (strcmp(ts, "fp64") == 0 || strcmp(ts, "double") == 0) {
-			double_to_string(&qual, *((double *)p));
-		}
+		if (nullmap && (*nullmap & bitmask) == 0) {
+			appendStringInfoString(&qual, "NULL");
+		} else {
+			if (strcmp(ts, "date") == 0) {
+				appendStringInfoCharMacro(&qual, '\'');
+				int32_t date = *((int32_t *)p) + (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
+				date_to_string(&qual, date);
+				appendStringInfoCharMacro(&qual, '\'');
+			} else if (strcmp(ts, "time") == 0) {
+				appendStringInfoCharMacro(&qual, '\'');
+				time_to_string(&qual, *((int64_t *)p));
+				appendStringInfoCharMacro(&qual, '\'');
+			} else if (strcmp(ts, "timestamp") == 0 || strcmp(ts, "timestamptz") == 0 ||
+					   strcmp(ts, "timestamp_micros") == 0 || strcmp(ts, "timestamptz_micros") == 0) {
+				appendStringInfoCharMacro(&qual, '\'');
+				timestamp_to_string(&qual, *((int64_t *)p) - epoch_ts);
+				appendStringInfoCharMacro(&qual, '\'');
+			} else if (strcmp(ts, "int8") == 0) {
+				int32_to_string(&qual, *((int8_t *)p));
+			} else if (strcmp(ts, "int16") == 0) {
+				int32_to_string(&qual, *((int16_t *)p));
+			} else if (strcmp(ts, "int32") == 0) {
+				int32_to_string(&qual, *((int32_t *)p));
+			} else if (strcmp(ts, "int64") == 0) {
+				int64_to_string(&qual, *((int64_t *)p));
+			} else if (strcmp(ts, "fp32") == 0 || strcmp(ts, "float") == 0) {
+				double_to_string(&qual, *((float *)p));
+			} else if (strcmp(ts, "fp64") == 0 || strcmp(ts, "double") == 0) {
+				double_to_string(&qual, *((double *)p));
+			}
 
-		p += itemsz;
+			p += itemsz;
+		}
+		
+		/* advance bitmap pointer if any */
+		if (nullmap) {
+			bitmask <<= 1;
+			if (bitmask == 0x100 /* (1<<8) */) {
+				nullmap++;
+				bitmask = 1;
+			}
+		}
 	}
 	appendStringInfoCharMacro(&qual, ']');
 	appendStringInfoString(&qual, "::");
