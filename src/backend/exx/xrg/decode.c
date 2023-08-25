@@ -274,6 +274,8 @@ static Datum decode_dec128av(xrg_array_header_t *arr, int sz, int precision, int
 			decimal128_to_string(v, precision, scale, dst, sizeof(dst));
 			appendStringInfoString(&str, dst);
 			p += sizeof(__int128_t);
+		} else {
+			appendStringInfoString(&str, "NULL");
 		}
 	}
 
@@ -294,7 +296,8 @@ static Datum decode_decimalav(xrg_array_header_t *arr, int sz, int precision, in
 	Insist(ltyp == XRG_LTYP_DECIMAL);
 
 	if (ndim == 0) {
-		ArrayType *ret = (ArrayType *) arr;
+		ArrayType *ret = (ArrayType *) palloc(sz);
+		memcpy(ret, arr, sz);
 		ret->elemtype = pg_array_to_element_oid(pg_attr->atttypid);
 		SET_VARSIZE(ret, sz);
 		return PointerGetDatum(ret);
