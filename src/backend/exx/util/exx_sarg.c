@@ -788,67 +788,6 @@ char *op_sarg_const_str(const char *ts, Datum d, int *plen) {
 	return 0;
 }
 
-static const char *const_to_text_array(Const *c) {
-	int16_t ptyp, ltyp, precision, scale;
-	bool is_array = false;
-	ptyp = ltyp = precision = scale = 0;
-	ArrayType *arr = DatumGetArrayTypeP(c->constvalue);
-	bool hasnull = ARR_HASNULL(arr);
-	bits8 *nullmap = ARR_NULLBITMAP(arr);
-	char *p = (char *)ARR_DATA_PTR(arr);
-	int *dims = ARR_DIMS(arr);
-	int numargs = dims[0];
-	int bitmask = 1;
-	
-	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
-	size_t itemsz = xrg_typ_size(ptyp);
-	const char *xrg_typ = xrg_typ_str(ptyp, ltyp, false); // only want to get primitive type
-	Insist(xrg_typ && *xrg_typ != 0 && is_array == true);
-
-	if (strcmp(xrg_typ, "string") == 0) {
-		if (c->constlen == -1) {
-			xrg_typ = "text";
-		}
-	}
-
-	StringInfoData qual;
-	initStringInfo(&qual);
-
-	appendStringInfoString(&qual, "ARRAY");
-	appendStringInfoCharMacro(&qual, '[');
-	for (int i = 0; i < numargs; i++) {
-		if (i > 0) {
-			appendStringInfoCharMacro(&qual, ',');
-		}
-
-		if (nullmap && (*nullmap & bitmask) == 0) {
-			appendStringInfoString(&qual, "NULL");
-		} else {
-			int32_t datalen = VARSIZE_ANY(p);
-			//int32_t len = VARSIZE_ANY_EXHDR(p);
-			//elog(LOG, "string: aligned = %d, datalen = %d len = %d, %s", INTALIGN(datalen), datalen, len, data);
-			appendStringInfoCharMacro(&qual, '\'');
-			// string escaped by the single quote
-			appendStringInfoString(&qual, op_sarg_const_str(xrg_typ, (Datum)p, 0));
-			appendStringInfoCharMacro(&qual, '\'');
-			p += INTALIGN(datalen); // data is 4-byte aligned
-		}
-
-		/* advance bitmap pointer if any */
-		if (nullmap) {
-			bitmask <<= 1;
-			if (bitmask == 0x100 /* (1<<8) */) {
-				nullmap++;
-				bitmask = 1;
-			}
-		}
-	}
-	appendStringInfoCharMacro(&qual, ']');
-	appendStringInfoString(&qual, "::");
-	pg_typ_to_string(&qual, c->consttype, c->consttypmod);
-	return qual.data;
-}
-
 const char *op_arraytype_to_string(Const *c) {
 #ifdef HAVE_INT64_TIMESTAMP
 	Timestamp epoch_ts = SetEpochTimestamp();
@@ -865,8 +804,8 @@ const char *op_arraytype_to_string(Const *c) {
 
 	pg_typ_to_xrg_typ(c->consttype, c->consttypmod, &ptyp, &ltyp, &precision, &scale, &is_array);
 	size_t itemsz = xrg_typ_size(ptyp);
-	const char *ts = xrg_typ_str(ptyp, ltyp, false); // only want to get primitive type
-	Insist(ts && *ts != 0 && is_array == true);
+	const char *xrg_typ = xrg_typ_str(ptyp, ltyp, false); // only want to get primitive type
+	Insist(xrg_typ && *xrg_typ != 0 && is_array == true);
 
 	StringInfoData qual;
 	initStringInfo(&qual);
@@ -881,10 +820,8 @@ const char *op_arraytype_to_string(Const *c) {
 		elog(ERROR, "dimension of constant array must be 1");
 	}
 
-	if (strcmp(ts, "string") == 0) {
-		return const_to_text_array(c);
-	} else if (strcmp(ts, "decimal") == 0) {
-		return const_to_text_array(c);
+	if (strcmp(xrg_typ, "string") == 0 && c->constlen == -1) {
+		xrg_typ = "text";
 	}
 
 	bool hasnull = ARR_HASNULL(arr);
@@ -901,35 +838,47 @@ const char *op_arraytype_to_string(Const *c) {
 		if (nullmap && (*nullmap & bitmask) == 0) {
 			appendStringInfoString(&qual, "NULL");
 		} else {
-			if (strcmp(ts, "date") == 0) {
+			if (strcmp(xrg_typ, "text") == 0  || strcmp(xrg_typ, "string") == 0 || strcmp(xrg_typ, "decimal") == 0) {
+				int32_t datalen = VARSIZE_ANY(p);
+				//int32_t len = VARSIZE_ANY_EXHDR(p);
+				//elog(LOG, "string: aligned = %d, datalen = %d len = %d, %s", INTALIGN(datalen), datalen, len, data);
 				appendStringInfoCharMacro(&qual, '\'');
-				int32_t date = *((int32_t *)p) + (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
-				date_to_string(&qual, date);
+				// string escaped by the single quote
+				appendStringInfoString(&qual, op_sarg_const_str(xrg_typ, (Datum)p, 0));
 				appendStringInfoCharMacro(&qual, '\'');
-			} else if (strcmp(ts, "time") == 0) {
-				appendStringInfoCharMacro(&qual, '\'');
-				time_to_string(&qual, *((int64_t *)p));
-				appendStringInfoCharMacro(&qual, '\'');
-			} else if (strcmp(ts, "timestamp") == 0 || strcmp(ts, "timestamptz") == 0 ||
-					   strcmp(ts, "timestamp_micros") == 0 || strcmp(ts, "timestamptz_micros") == 0) {
-				appendStringInfoCharMacro(&qual, '\'');
-				timestamp_to_string(&qual, *((int64_t *)p) - epoch_ts);
-				appendStringInfoCharMacro(&qual, '\'');
-			} else if (strcmp(ts, "int8") == 0) {
-				int32_to_string(&qual, *((int8_t *)p));
-			} else if (strcmp(ts, "int16") == 0) {
-				int32_to_string(&qual, *((int16_t *)p));
-			} else if (strcmp(ts, "int32") == 0) {
-				int32_to_string(&qual, *((int32_t *)p));
-			} else if (strcmp(ts, "int64") == 0) {
-				int64_to_string(&qual, *((int64_t *)p));
-			} else if (strcmp(ts, "fp32") == 0 || strcmp(ts, "float") == 0) {
-				double_to_string(&qual, *((float *)p));
-			} else if (strcmp(ts, "fp64") == 0 || strcmp(ts, "double") == 0) {
-				double_to_string(&qual, *((double *)p));
-			}
+				p += INTALIGN(datalen); // data is 4-byte aligned
 
-			p += itemsz;
+			} else {
+				if (strcmp(xrg_typ, "date") == 0) {
+					appendStringInfoCharMacro(&qual, '\'');
+					int32_t date = *((int32_t *)p) + (POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE);
+					date_to_string(&qual, date);
+					appendStringInfoCharMacro(&qual, '\'');
+				} else if (strcmp(xrg_typ, "time") == 0) {
+					appendStringInfoCharMacro(&qual, '\'');
+					time_to_string(&qual, *((int64_t *)p));
+					appendStringInfoCharMacro(&qual, '\'');
+				} else if (strcmp(xrg_typ, "timestamp") == 0 || strcmp(xrg_typ, "timestamptz") == 0 ||
+						   strcmp(xrg_typ, "timestamp_micros") == 0 || strcmp(xrg_typ, "timestamptz_micros") == 0) {
+					appendStringInfoCharMacro(&qual, '\'');
+					timestamp_to_string(&qual, *((int64_t *)p) - epoch_ts);
+					appendStringInfoCharMacro(&qual, '\'');
+				} else if (strcmp(xrg_typ, "int8") == 0) {
+					int32_to_string(&qual, *((int8_t *)p));
+				} else if (strcmp(xrg_typ, "int16") == 0) {
+					int32_to_string(&qual, *((int16_t *)p));
+				} else if (strcmp(xrg_typ, "int32") == 0) {
+					int32_to_string(&qual, *((int32_t *)p));
+				} else if (strcmp(xrg_typ, "int64") == 0) {
+					int64_to_string(&qual, *((int64_t *)p));
+				} else if (strcmp(xrg_typ, "fp32") == 0 || strcmp(xrg_typ, "float") == 0) {
+					double_to_string(&qual, *((float *)p));
+				} else if (strcmp(xrg_typ, "fp64") == 0 || strcmp(xrg_typ, "double") == 0) {
+					double_to_string(&qual, *((double *)p));
+				}
+
+				p += itemsz;
+			}
 		}
 		
 		/* advance bitmap pointer if any */
