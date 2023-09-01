@@ -501,6 +501,10 @@ static void traverse_qual(kite_extscan_t *ex, ExprState *exprstate, stringbuffer
 		traverse_qual_expr(ex, exprstate->expr, strbuf);
 	} else if (IsA(exprstate->expr, CaseExpr)) {
 		traverse_qual_expr(ex, exprstate->expr, strbuf);
+	} else if (IsA(exprstate->expr, Var)) {
+		traverse_qual_expr(ex, exprstate->expr, strbuf);
+	} else {
+		elog_node_display(ERROR, "qual type not supported", exprstate->expr, true);
 	}
 }
 
