@@ -726,13 +726,12 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 			traverse(arg, tupdesc, strbuf, pgtargetlist);
 		}
 		stringbuffer_append(strbuf, ')');
+		if (filter) {
+			stringbuffer_append_string(strbuf, " FILTER (WHERE ");
+			traverse(filter, tupdesc, strbuf, pgtargetlist);
+			stringbuffer_append(strbuf, ')');
+		}
 		target->tuplist = lappend(target->tuplist, stringbuffer_to_string(strbuf));
-	}
-
-	if (filter) {
-		stringbuffer_append_string(strbuf, " FILTER (WHERE ");
-		traverse(filter, tupdesc, strbuf, pgtargetlist);
-		stringbuffer_append(strbuf, ')');
 	}
 
 	stringbuffer_release(strbuf);
