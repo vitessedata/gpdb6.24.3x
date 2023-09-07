@@ -620,7 +620,7 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 	xex_list_t *args;
 
 	int n = xex_list_length(list);
-	Insist(n == 7);
+	Insist(n == 8);
 	type = xex_list_get_string(list, 0); // type
 	Insist(type);
 
@@ -634,7 +634,11 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 
 	Insist(xex_list_get_int8(list, 5, &aggvaradic) == 0); // aggvariadic
 
-	obj = xex_list_get(list, 6); // args
+	obj = xex_list_get(list, 6); // aggfilter
+	Insist(obj);
+	xex_list_t *filter = xex_to_list(obj);
+
+	obj = xex_list_get(list, 7); // args
 	Insist(obj);
 	args = xex_to_list(obj);
 	Insist(args);
@@ -700,6 +704,12 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 		stringbuffer_append(strbuf, ')');
 	}
 
+	if (filter) {
+		stringbuffer_append_string(strbuf, " FILTER (WHERE ");
+		traverse(filter, tupdesc, strbuf, pgtargetlist);
+		stringbuffer_append(strbuf, ')');
+	}
+
 	target->tuplist = lappend(target->tuplist, stringbuffer_to_string(strbuf));
 
 	if (is_avg) {
@@ -717,6 +727,12 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 		}
 		stringbuffer_append(strbuf, ')');
 		target->tuplist = lappend(target->tuplist, stringbuffer_to_string(strbuf));
+	}
+
+	if (filter) {
+		stringbuffer_append_string(strbuf, " FILTER (WHERE ");
+		traverse(filter, tupdesc, strbuf, pgtargetlist);
+		stringbuffer_append(strbuf, ')');
 	}
 
 	stringbuffer_release(strbuf);

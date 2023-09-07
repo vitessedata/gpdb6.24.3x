@@ -53,6 +53,13 @@ static void aggref_fill_xexpr(Node *node, xex_list_t *list) {
 
 	// aggvariadic
 	xex_list_append_int8(list, aggref->aggvariadic);
+
+	// aggfilter
+	if (aggref->aggfilter) {
+		node_to_xexpr((Node *) aggref->aggfilter, list);
+	} else {
+		xex_list_append_string(list, "NULL");
+	}
 }
 
 static void funcexpr_fill_xexpr(Node *node, xex_list_t *list) {
