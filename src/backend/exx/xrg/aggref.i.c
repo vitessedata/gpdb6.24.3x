@@ -45,6 +45,11 @@ static bool expr_kite_valid(Node *node, void *ptr) {
 	if (IsA(node, Aggref)) {
 		Aggref *aggref = (Aggref *)node;
 
+		if (aggref->aggfilter) {
+			*((bool *)ptr) = false;
+			return false;
+		}
+
 		if (list_length(aggref->args) > 0) {
 			ListCell *lc;
 			foreach (lc, aggref->args) {
