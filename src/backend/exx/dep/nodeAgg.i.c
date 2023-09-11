@@ -60,8 +60,6 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				break;
 
 			case 2100: // avg bigint
-			case 2101: // avg integer
-			case 2102: // avg smallint
 				{
 					/* See utils/adt/numeric.c:numeric_poly_combine int8:2100, int4:2101, int2:2102 */
 
@@ -98,6 +96,37 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
                                         MemoryContextSwitchTo(oldContext);
 
 
+				}
+				break;
+			case 2101: // avg integer
+			case 2102: // avg smallint
+				{
+                    MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
+                                        aggstate->curperagg = peraggstate;
+
+                                        FunctionCallInfo fcinfo = &peraggstate->transfn_fcinfo;
+                                        FmgrInfo flinfo;
+                                        memset(&flinfo, 0, sizeof(FmgrInfo));
+
+                                        flinfo.fn_addr = int4_avg_combine;
+                                        flinfo.fn_nargs = 2;
+                                        flinfo.fn_strict = true;
+
+                                        InitFunctionCallInfoData(*fcinfo, &flinfo, 2, peraggstate->aggCollation,
+                                                        (void *) aggstate, NULL);
+
+                                        fcinfo->arg[0] = pergroupstate->transValue;
+                                        fcinfo->argnull[0] = pergroupstate->transValueIsNull;;
+                                        fcinfo->arg[1] = (Datum) value;
+                                        fcinfo->argnull[1] = false;
+
+                                        pergroupstate->transValue = FunctionCallInvoke(fcinfo);
+                                        pergroupstate->noTransValue = false;
+                                        pergroupstate->transValueIsNull = false;
+
+
+                                        aggstate->curperagg = NULL;
+                                        MemoryContextSwitchTo(oldContext);
 				}
 				break;
 			case 2103: // avg numeric 

@@ -514,23 +514,19 @@ int decode_avg_int64(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datu
 
 	Insist(ltyp1 == XRG_LTYP_NONE && ptyp1 == XRG_PTYP_INT64);
 
-	if (!tgt->data) {
-		tgt->data = palloc(sizeof(ExxInt128AggState));
-	}
-	ExxInt128AggState *p = (ExxInt128AggState *)tgt->data;
-
-	int128 sum = *((int64_t *)data0);
-	int64 count = *((int64_t *)data1);
-	;
-
-	p->calcSumX2 = false;
-	p->N = count;
-	p->sumX = sum;
-	p->sumX2 = 0;
+	int sz = ARR_OVERHEAD_NONULLS(1);
+	sz += 2 * sizeof(int64_t);
+	ArrayType *arr = (ArrayType *) palloc(sz);
+	SET_VARSIZE(arr, sz);
+	arr->ndim = 1;
+	arr->dataoffset = 0;
+	arr->elemtype =  INT8OID;
+	int64_t *p = (int64_t *) ARR_DATA_PTR(arr);
+	p[0] = *((int64_t *) data1); // count
+	p[1] = *((int64_t *) data0); // sum
 
 	*pg_isnull = false;
-	*pg_datum = PointerGetDatum(p);
-
+	*pg_datum = PointerGetDatum(arr);
 	return 0;
 }
 
