@@ -61,7 +61,7 @@ static Datum decode_dateav(xrg_array_header_t *arr, int sz, Form_pg_attribute pg
 	int16_t ptyp = xrg_array_ptyp(arr);
 	int16_t ltyp = xrg_array_ltyp(arr);
 	int ndim = xrg_array_ndim(arr);
-	int ndims = *xrg_array_dims(arr);
+	int ndims = (ndim == 0 ? 0 : *xrg_array_dims(arr));
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char *nullmap = xrg_array_nullbitmap(arr);
@@ -100,7 +100,7 @@ static Datum decode_timestampav(xrg_array_header_t *arr, int sz, Form_pg_attribu
 	int16_t ptyp = xrg_array_ptyp(arr);
 	int16_t ltyp = xrg_array_ltyp(arr);
 	int ndim = xrg_array_ndim(arr);
-	int ndims = *xrg_array_dims(arr);
+	int ndims = (ndim == 0 ? 0 : *xrg_array_dims(arr));
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char *nullmap = xrg_array_nullbitmap(arr);
@@ -145,7 +145,7 @@ static Datum decode_stringav(xrg_array_header_t *arr, int sz, Form_pg_attribute 
 	int16_t ptyp = xrg_array_ptyp(arr);
 	int16_t ltyp = xrg_array_ltyp(arr);
 	int ndim = xrg_array_ndim(arr);
-	int ndims = *xrg_array_dims(arr);
+	int ndims = (ndim == 0 ? 0 : *xrg_array_dims(arr));
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char *nullmap = xrg_array_nullbitmap(arr);
@@ -207,7 +207,7 @@ static Datum decode_dec64av(xrg_array_header_t *arr, int sz, int precision, int 
 	int16_t ptyp = xrg_array_ptyp(arr);
 	int16_t ltyp = xrg_array_ltyp(arr);
 	int ndim = xrg_array_ndim(arr);
-	int ndims = *xrg_array_dims(arr);
+	int ndims = (ndim == 0 ? 0 : *xrg_array_dims(arr));
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char dst[MAX_DEC128_STRLEN];
@@ -249,7 +249,7 @@ static Datum decode_dec128av(xrg_array_header_t *arr, int sz, int precision, int
 	int16_t ptyp = xrg_array_ptyp(arr);
 	int16_t ltyp = xrg_array_ltyp(arr);
 	int ndim = xrg_array_ndim(arr);
-	int ndims = *xrg_array_dims(arr);
+	int ndims = (ndim == 0 ? 0 : *xrg_array_dims(arr));
 	char *p = xrg_array_data_ptr(arr);
 	int itemsz = xrg_typ_size(ptyp);
 	char dst[MAX_DEC128_STRLEN];
