@@ -514,13 +514,23 @@ int decode_avg_int64(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datu
 
 	Insist(ltyp1 == XRG_LTYP_NONE && ptyp1 == XRG_PTYP_INT64);
 
-	int sz = ARR_OVERHEAD_NONULLS(1);
-	sz += 2 * sizeof(int64_t);
-	ArrayType *arr = (ArrayType *) palloc(sz);
-	SET_VARSIZE(arr, sz);
-	arr->ndim = 1;
-	arr->dataoffset = 0;
-	arr->elemtype =  INT8OID;
+	if (!tgt->data) {
+		int sz = ARR_OVERHEAD_NONULLS(1);
+		sz += 2 * sizeof(int64_t);
+		ArrayType *arr = (ArrayType *) palloc(sz);
+		SET_VARSIZE(arr, sz);
+		arr->ndim = 1;
+		arr->dataoffset = 0;
+		arr->elemtype =  INT8OID;
+		int *dims = ARR_DIMS(arr);
+		int *lbs = ARR_LBOUND(arr);
+		dims[0] = 2;
+		lbs[0] = 1;
+		tgt->data = arr;
+	}
+
+	ArrayType *arr = (ArrayType *)tgt->data;
+
 	int64_t *p = (int64_t *) ARR_DATA_PTR(arr);
 	p[0] = *((int64_t *) data1); // count
 	p[1] = *((int64_t *) data0); // sum
@@ -561,7 +571,6 @@ int decode_avg_int128(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 
 	int128 sum = *((__int128_t *)data0);
 	int64 count = *((int64_t *)data1);
-	;
 
 	p->calcSumX2 = false;
 	p->N = count;
@@ -604,7 +613,6 @@ int decode_avg_double(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 
 	double sum = *((double *)data0);
 	int64 count = *((int64_t *)data1);
-	;
 
 	SET_VARSIZE(p, sizeof(ExxFloatAvgTransdata));
 	p->arraytype.ndim = 1;
@@ -654,7 +662,6 @@ int decode_avg_numeric(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_da
 
 	int128 i128 = *((__int128_t *)data0);
 	int64 count = *((int64_t *)data1);
-	;
 
 	Datum sum;
 	char dst[MAX_DEC128_STRLEN];
