@@ -175,32 +175,33 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				{
 					/* See utils/adt/float.c:float8_combine */
 					// value should be ExxFloatAvgTransdata
-					
-					ExxFloatAvgTransdata tmp0;
-					ExxFloatAvgTransdata *tr0 = (ExxFloatAvgTransdata *) pergroupstate->transValue;
-					ExxFloatAvgTransdata *tr1 = (ExxFloatAvgTransdata *) value;
-					if (tr0 == NULL || VARSIZE(tr0) != sizeof(ExxFloatAvgTransdata)) {
-						tr0 = &tmp0;
-						SET_VARSIZE(tr0, sizeof(ExxFloatAvgTransdata));
-						tr0->arraytype.ndim = 1;
-						tr0->arraytype.dataoffset = 0;
-						tr0->arraytype.elemtype = FLOAT8OID;
-						tr0->nelem = 3;
-						tr0->lbound = 1;
-						tr0->data[0] = tr0->data[1] = tr0->data[2] = 0;
-					}
 
-					if (tr1 == 0 || VARSIZE_ANY_EXHDR(tr1) != sizeof(ExxFloatAvgTransdata) - 4) {
-						break;
-					}
-					
-					tr0->data[0] += tr1->data[0]; // N
-					tr0->data[1] += tr1->data[1]; // sumX
+					MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
+					aggstate->curperagg = peraggstate;
 
-					if (tr0 == &tmp0) {
-						pergroupstate->transValue = datumCopyWithMemManager(pergroupstate->transValue,
-								PointerGetDatum(tr0), false, -1, mem_manager);
-					}
+					FunctionCallInfo fcinfo = &peraggstate->transfn_fcinfo;
+					FmgrInfo flinfo;
+					memset(&flinfo, 0, sizeof(FmgrInfo));
+
+					flinfo.fn_addr = float8_combine;
+					flinfo.fn_nargs = 2;
+					flinfo.fn_strict = true;
+
+					InitFunctionCallInfoData(*fcinfo, &flinfo, 2, peraggstate->aggCollation,
+					(void *) aggstate, NULL);
+
+					fcinfo->arg[0] = pergroupstate->transValue;
+					fcinfo->argnull[0] = pergroupstate->transValueIsNull;;
+					fcinfo->arg[1] = value;
+					fcinfo->argnull[1] = false;
+
+					pergroupstate->transValue = FunctionCallInvoke(fcinfo);
+					pergroupstate->noTransValue = false;
+					pergroupstate->transValueIsNull = false;
+
+					aggstate->curperagg = NULL;
+					MemoryContextSwitchTo(oldContext);
+
 					break;
 				}
 
