@@ -659,6 +659,9 @@ static void aggref_to_target(kite_target_t *target, xex_list_t *list, TupleDesc 
 	case XRG_OP_MAX:
 		target->decode = decode_var;
 		break;
+	case XRG_OP_SUM_FLOAT:
+		target->decode = decode_sum_float;
+		break;
 	case XRG_OP_AVG_INT64:
 		target->decode = decode_avg_int64;
 		break;

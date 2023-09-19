@@ -9,6 +9,8 @@
 /* decode functions */
 int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, bool *pg_isnull);
 
+int decode_sum_float(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, bool *pg_isnull);
+
 int decode_avg_int64(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, bool *pg_isnull);
 
 int decode_avg_int128(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, bool *pg_isnull);

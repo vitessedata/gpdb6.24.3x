@@ -490,6 +490,30 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 	return 0;
 }
 
+int decode_sum_float(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, bool *pg_isnull) {
+    Insist(tgt->attrs && (list_length(tgt->attrs) == 1));
+
+    int idx = linitial_int(tgt->attrs);
+    Insist(idx < iter->nvec);
+
+    char *data = iter->value[idx];
+    char flag = *iter->flag[idx];
+    int ptyp = iter->attr[idx].ptyp;
+
+    // data in iter->value[idx] and iter->flag[idx] and iter->attrs[idx].ptyp
+    *pg_isnull = (flag & XRG_FLAG_NULL);
+
+	Insist(ptyp == XRG_PTYP_FP64);
+	double v = *((double *) data);
+	
+	// down cast to float
+	float f = (float) v;
+
+	*pg_datum = Float4GetDatum(f);
+	return 0;
+}
+
+	
 /**
  * decode AVG int64 column.
  * XRG will split AVG column into SUM and COUNT and finally convert to 

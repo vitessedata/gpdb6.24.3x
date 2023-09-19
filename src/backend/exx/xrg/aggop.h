@@ -45,6 +45,7 @@ enum xrg_opexpr_t {
 	XRG_OP_COUNT_STAR,
 	XRG_OP_SUM_INT64,
 	XRG_OP_SUM_INT128,
+	XRG_OP_SUM_FLOAT,
 	XRG_OP_SUM_DOUBLE,
 	XRG_OP_SUM_NUMERIC,
 	XRG_OP_AVG_INT64,
@@ -91,6 +92,7 @@ static inline const char *xrg_opexpr_str(int32_t op) {
 		return XRG_OP_COUNT_STAR_STR;
 	case XRG_OP_SUM_INT64:
 	case XRG_OP_SUM_INT128:
+	case XRG_OP_SUM_FLOAT:
 	case XRG_OP_SUM_DOUBLE:
 	case XRG_OP_SUM_NUMERIC:
 		return XRG_OP_SUM_STR;
@@ -503,6 +505,7 @@ static inline int32_t pg_agg_to_op(int32_t funcid) {
 	case 2109: // PG_PROC_sum_2109: /* sum int2 */
 		return XRG_OP_SUM_INT64;
 	case 2110: // PG_PROC_sum_2110: /* sum float4 */
+		return XRG_OP_SUM_FLOAT;
 	case 2111: // PG_PROC_sum_2111: /* sum float8 */
 		/* 2112 is sum cash, nyi */
 		/* 2113 is sum interval, nyi */
