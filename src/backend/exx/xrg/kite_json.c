@@ -255,6 +255,14 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 
 		const char *constvalue = 0;
 		switch (c->consttype) {
+		case  NUMERICOID: // numeric
+		{
+			constvalue = op_sarg_const_str(ts, c->constvalue, 0);
+			stringbuffer_append(strbuf, '\'');
+			stringbuffer_append_string(strbuf, constvalue);
+			stringbuffer_append(strbuf, '\'');
+
+		} break;
 		case INTERVALOID: // interval
 		{
 			constvalue = op_sarg_const_str(ts, c->constvalue, 0);
