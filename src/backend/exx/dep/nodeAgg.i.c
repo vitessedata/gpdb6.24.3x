@@ -64,7 +64,7 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 					/* See utils/adt/numeric.c:numeric_poly_combine int8:2100, int4:2101, int2:2102 */
 
 					// value should be ExxInt128AggState and not null
-					if (value == 0) {
+					if (isnull || value == 0) {
 						break;
 					}
 
@@ -101,6 +101,11 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 			case 2101: // avg integer
 			case 2102: // avg smallint
 				{
+
+					if (isnull || value == 0) {
+						break;
+					}
+
                     MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
                                         aggstate->curperagg = peraggstate;
 
@@ -132,7 +137,7 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 			case 2103: // avg numeric 
 				{
 					/* See utils/adt/numeric.c:numeric_avg_accum  numeric avg */
-					if (value == 0) {
+					if (isnull || value == 0) {
 						break;
 					}
 
@@ -176,6 +181,10 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 					/* See utils/adt/float.c:float8_combine */
 					// value should be ExxFloatAvgTransdata
 
+					if (isnull || value == 0) {
+						break;
+					}
+
 					MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
 					aggstate->curperagg = peraggstate;
 
@@ -209,6 +218,11 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				{
 					/* reference to executor/nodeAgg.c:invoke_agg_trans_func */
 					// value should be (__int128_t *)
+
+					if (isnull) {
+						break;
+					}
+
 					MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
 					aggstate->curperagg = peraggstate;
 
@@ -244,6 +258,10 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 			case 2108: // sum integer
 			case 2109: // sum smallint
 				{
+					if (isnull) {
+						break;
+					}
+
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = false;
@@ -256,6 +274,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 
 			case 2110: // sum float4
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = false;
@@ -270,6 +291,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 	
 			case 2111: // sum float8
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = false;
@@ -287,6 +311,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 					/* See utils/adt/numeric.c numeric_avg_accum(PG_FUNCTION_ARGS) - avg sum() */
 					/* reference to executor/nodeAgg.c:invoke_agg_trans_func */
 					// value should be numeric
+					if (isnull) {
+						break;
+					}
 					MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
 					aggstate->curperagg = peraggstate;
 

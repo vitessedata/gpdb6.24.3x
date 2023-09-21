@@ -527,7 +527,7 @@ int decode_avg_int64(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datu
 	Insist(idx0 < iter->nvec && idx1 < iter->nvec);
 
 	char *data0 = iter->value[idx0];
-	//char flag0 = *iter->flag[idx0];
+	char flag0 = *iter->flag[idx0];  // sum may be NULL
 	int ltyp0 = iter->attr[idx0].ltyp;
 	int ptyp0 = iter->attr[idx0].ptyp;
 
@@ -539,6 +539,12 @@ int decode_avg_int64(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datu
 	int ptyp1 = iter->attr[idx1].ptyp;
 
 	Insist(ltyp1 == XRG_LTYP_NONE && ptyp1 == XRG_PTYP_INT64);
+
+	if (flag0) {
+		*pg_datum = PointerGetDatum(NULL);
+		*pg_isnull = true;
+		return 0;
+	}
 
 	if (!tgt->data) {
 		int sz = ARR_OVERHEAD_NONULLS(1);
@@ -579,7 +585,7 @@ int decode_avg_int128(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 	Insist(idx0 < iter->nvec && idx1 < iter->nvec);
 
 	char *data0 = iter->value[idx0];
-	//char flag0 = *iter->flag[idx0];
+	char flag0 = *iter->flag[idx0];  // sum may be NULL
 	int ltyp0 = iter->attr[idx0].ltyp;
 	int ptyp0 = iter->attr[idx0].ptyp;
 	Insist(ltyp0 == XRG_LTYP_NONE && ptyp0 == XRG_PTYP_INT128);
@@ -589,6 +595,12 @@ int decode_avg_int128(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 	int ltyp1 = iter->attr[idx1].ltyp;
 	int ptyp1 = iter->attr[idx1].ptyp;
 	Insist(ltyp1 == XRG_LTYP_NONE && ptyp1 == XRG_PTYP_INT64);
+
+	if (flag0) {
+		*pg_datum = PointerGetDatum(NULL);
+		*pg_isnull = true;
+		return 0;
+	}
 
 	if (!tgt->data) {
 		tgt->data = palloc(sizeof(ExxInt128AggState));
@@ -621,7 +633,7 @@ int decode_avg_double(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 	Insist(idx0 < iter->nvec && idx1 < iter->nvec);
 
 	char *data0 = iter->value[idx0];
-	//char flag0 = *iter->flag[idx0];
+	char flag0 = *iter->flag[idx0];
 	int ltyp0 = iter->attr[idx0].ltyp;
 	int ptyp0 = iter->attr[idx0].ptyp;
 	Insist(ltyp0 == XRG_LTYP_NONE && ptyp0 == XRG_PTYP_FP64);
@@ -631,6 +643,12 @@ int decode_avg_double(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_dat
 	int ltyp1 = iter->attr[idx1].ltyp;
 	int ptyp1 = iter->attr[idx1].ptyp;
 	Insist(ltyp1 == XRG_LTYP_NONE && ptyp1 == XRG_PTYP_INT64);
+
+	if (flag0) {
+		*pg_datum = PointerGetDatum(NULL);
+		*pg_isnull = true;
+		return 0;
+	}
 
 	if (!tgt->data) {
 		tgt->data = palloc(sizeof(ExxFloatAvgTransdata));
@@ -668,7 +686,7 @@ int decode_avg_numeric(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_da
 	Insist(idx0 < iter->nvec && idx1 < iter->nvec);
 
 	char *data0 = iter->value[idx0];
-	//char flag0 = *iter->flag[idx0];
+	char flag0 = *iter->flag[idx0];
 	int ltyp0 = iter->attr[idx0].ltyp;
 	int ptyp0 = iter->attr[idx0].ptyp;
 	int precision0 = iter->attr[idx0].precision;
@@ -680,6 +698,12 @@ int decode_avg_numeric(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_da
 	int ltyp1 = iter->attr[idx1].ltyp;
 	int ptyp1 = iter->attr[idx1].ptyp;
 	Insist(ltyp1 == XRG_LTYP_NONE && ptyp1 == XRG_PTYP_INT64);
+
+	if (flag0) {
+		*pg_datum = PointerGetDatum(NULL);
+		*pg_isnull = true;
+		return 0;
+	}
 
 	if (!tgt->data) {
 		tgt->data = palloc(sizeof(ExxNumericAggState));
