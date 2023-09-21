@@ -344,6 +344,11 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 			foreach (l, oplist) {
 				traverse_qual_expr(ex, (Expr *)lfirst(l), strbuf);
 			}
+			const char *cast_to = pg_cast_to(fp->funcid);
+			if (cast_to) {
+				stringbuffer_append_string(strbuf, "::");
+				stringbuffer_append_string(strbuf, cast_to);
+			}
 		} else {
 			const char *opstr = xrg_opexpr_str(opcode);
 			stringbuffer_append_string(strbuf, opstr);
@@ -493,6 +498,8 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		traverse_qual_expr(ex, cw->result, strbuf);
 
 		return;
+	} else {
+		elog_node_display(ERROR, "qual expression not supported", expr, true);
 	}
 }
 

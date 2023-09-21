@@ -39,6 +39,15 @@
 #define XRG_OP_RANDOM_STR "RANDOM"
 #define XRG_OP_ARRAY_LENGTH_STR "ARRAY_LENGTH"
 
+#define PG_TYPE_INT2 "int2"
+#define PG_TYPE_INT4 "int4"
+#define PG_TYPE_INT8 "int8"
+#define PG_TYPE_NUMERIC "numeric"
+#define PG_TYPE_FLOAT4 "float4"
+#define PG_TYPE_FLOAT8 "float8"
+#define PG_TYPE_MONEY "money"
+#define PG_TYPE_BOOL "boolean"
+
 enum xrg_opexpr_t {
 	XRG_OP_UNKNOWN = 0,
 	XRG_OP_COUNT,
@@ -438,39 +447,48 @@ static inline int32_t pg_func_to_op(int32_t funcid) {
 	case 877:
 		return XRG_OP_SUBSTR;
 	// See pg_cast.h for casting OID
-	case 714:
-	case 480:
-	case 652:
-	case 482:
-	case 1781:
-	case 754:
-	case 313:
-	case 236:
-	case 235:
-	case 1782:
-	case 481:
-	case 314:
-	case 318:
-	case 316:
-	case 1740:
-	case 653:
-	case 238:
-	case 319:
-	case 311:
-	case 483:
-	case 237:
-	case 317:
-	case 312:
-	case 1779:
-	case 1783:
-	case 1744:
-	case 1745:
-	case 1746:
-	case 3824:
-	case 3811:
-	case 3812:
-	case 2557:
-	case 2558:
+	/*
+	 * Numeric category: implicit casts are allowed in the direction
+	 * int2->int4->int8->numeric->float4->float8, while casts in the
+	 * reverse direction are assignment-only.
+	 */
+	case 714:   // cast from int8 to int2
+	case 480:   // cast from int8 to int4
+	case 652:   // cast from int8 to float4
+	case 482:   // cast from int8 to float8
+	case 1781:  // cast from int8 to numeric
+	case 754:   // cast from int2 to int8
+	case 313:   // cast from int2 to int4
+	case 236:   // cast from int2 to float4
+	case 235:   // cast from int2 to float8
+	case 1782:  // cast from int2 to numeric
+	case 481:   // cast from int4 to int8
+	case 314:   // cast from int4 to int2
+	case 318:   // cast from int4 to float4
+	case 316:   // cast from int4 to float8
+	case 1740:  // cast from int4 to numeric
+	case 653:   // cast from float4 to int8  (explicit)
+	case 238:   // cast from float4 to int2  (explicit)
+	case 319:   // cast from float4 to int4  (explicit)
+	case 311:   // cast from float4 to float8
+	case 1742:  // cast from float4 to numeric (explicit)
+	case 483:   // cast from float8 to int8 (explicit)
+	case 237:   // cast from float8 to int2 (explicit)
+	case 317:   // cast from float8 to int4 (explicit)
+	case 312:   // cast from float8 to float4 (explicit)
+	case 1743:  // cast from float8 to numeric (explicit)
+	case 1779:  // cast from numeric to int8 (explicit)
+	case 1783:  // cast from numeric to int2 (explicit)
+	case 1744:  // cast from numeric to int4  (explicit)
+	case 1745:  // cast from numeric to float4  (explicit)
+	case 1746:  // cast from numeric to float8  (explicit)
+	case 3823:  // cast from money to numeric
+	case 3824:  // cast from numeric to money (explicit)
+	case 3811:  // cast from int4 to money
+	case 3812:  // cast from int8 to money
+	/* Allow explicit coercions between int4 and bool */
+	case 2557:  // cast from int4 to boolean (explicit)
+	case 2558:  // cast from boolean to int4
 		return XRG_OP_CAST;
 	case 2176: // array_length
 		return XRG_OP_ARRAY_LENGTH;
@@ -478,6 +496,78 @@ static inline int32_t pg_func_to_op(int32_t funcid) {
 		/* unsupported */
 		return -1;
 	}
+}
+
+static inline const char *pg_cast_to(int32_t funcid) {
+	switch (funcid) {
+    /*
+     * Numeric category: implicit casts are allowed in the direction
+     * int2->int4->int8->numeric->float4->float8, while casts in the
+     * reverse direction are assignment-only.
+     */
+    case 714:   // cast from int8 to int2
+    case 480:   // cast from int8 to int4
+    case 652:   // cast from int8 to float4
+    case 482:   // cast from int8 to float8
+    case 1781:  // cast from int8 to numeric
+    case 754:   // cast from int2 to int8
+    case 313:   // cast from int2 to int4
+    case 236:   // cast from int2 to float4
+    case 235:   // cast from int2 to float8
+    case 1782:  // cast from int2 to numeric
+    case 481:   // cast from int4 to int8
+    case 314:   // cast from int4 to int2
+    case 318:   // cast from int4 to float4
+    case 316:   // cast from int4 to float8
+    case 1740:  // cast from int4 to numeric
+		return NULL;
+    case 653:   // cast from float4 to int8  (explicit)
+		return PG_TYPE_INT8;
+    case 238:   // cast from float4 to int2  (explicit)
+		return PG_TYPE_INT2;
+    case 319:   // cast from float4 to int4  (explicit)
+		return PG_TYPE_INT4;
+    case 311:   // cast from float4 to float8
+		return NULL;
+    case 1742:  // cast from float4 to numeric (explicit)
+		return PG_TYPE_NUMERIC;
+    case 483:   // cast from float8 to int8 (explicit)
+		return PG_TYPE_INT8;
+    case 237:   // cast from float8 to int2 (explicit)
+		return PG_TYPE_INT2;
+    case 317:   // cast from float8 to int4 (explicit)
+		return PG_TYPE_INT4;
+    case 312:   // cast from float8 to float4 (explicit)
+		return PG_TYPE_FLOAT4;
+    case 1743:  // cast from float8 to numeric (explicit)
+		return PG_TYPE_NUMERIC;
+    case 1779:  // cast from numeric to int8 (explicit)
+		return PG_TYPE_INT8;
+    case 1783:  // cast from numeric to int2 (explicit)
+		return PG_TYPE_INT2;
+    case 1744:  // cast from numeric to int4  (explicit)
+		return PG_TYPE_INT4;
+    case 1745:  // cast from numeric to float4  (explicit)
+		return PG_TYPE_FLOAT4;
+    case 1746:  // cast from numeric to float8  (explicit)
+		return PG_TYPE_FLOAT8;
+    case 3823:  // cast from money to numeric
+		return PG_TYPE_NUMERIC;
+    case 3824:  // cast from numeric to money (explicit)
+    case 3811:  // cast from int4 to money
+    case 3812:  // cast from int8 to money
+		return PG_TYPE_MONEY;
+    /* Allow explicit coercions between int4 and bool */
+    case 2557:  // cast from int4 to boolean (explicit)
+		return PG_TYPE_BOOL;
+    case 2558:  // cast from boolean to int4
+		return PG_TYPE_INT4;
+	default:
+		/* unsupported */
+		return NULL;
+	}
+
+	return NULL;
 }
 
 static inline int32_t pg_agg_to_op(int32_t funcid) {

@@ -64,6 +64,11 @@ static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 			Insist(l);
 			traverse(l, tupdesc, strbuf, pgtargetlist);
 		}
+		const char *cast_to = pg_cast_to(funcid);
+		if (cast_to) {
+			stringbuffer_append_string(strbuf, "::");
+			stringbuffer_append_string(strbuf, cast_to);
+		}
 	} else if (op != -1) {
 		stringbuffer_append_string(strbuf, (char *)xrg_opexpr_str(op));
 		stringbuffer_append(strbuf, '(');
