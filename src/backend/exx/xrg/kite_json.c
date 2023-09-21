@@ -498,6 +498,44 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		traverse_qual_expr(ex, cw->result, strbuf);
 
 		return;
+	} else if (IsA(expr, NullIfExpr)) {
+		NullIfExpr *nullifexpr = (NullIfExpr *)expr;
+		stringbuffer_append_string(strbuf, "NULLIF(");
+		// transverse the arguments
+		ListCell *lc;
+		int i = 0;
+		foreach (lc, nullifexpr->args) {
+			Expr *chd = lfirst(lc);
+			if (i > 0) {
+				stringbuffer_append(strbuf, ',');
+			}
+			if (IsA(chd, OpExpr)) {
+				stringbuffer_append(strbuf, '(');
+				traverse_qual_expr(ex, chd, strbuf);
+				stringbuffer_append(strbuf, ')');
+			} else {
+				traverse_qual_expr(ex, chd, strbuf);
+			}
+			i++;
+		}
+		stringbuffer_append(strbuf, ')');
+		return;
+	} else if (IsA(expr, CoalesceExpr)) {
+		CoalesceExpr *coalesceexpr = (CoalesceExpr *)expr;
+		stringbuffer_append_string(strbuf, "COALESCE(");
+
+		// transverse the arguments
+		ListCell *lc;
+		int i = 0;
+		foreach (lc, coalesceexpr->args) {
+			if (i > 0) {
+				stringbuffer_append(strbuf, ',');
+			}
+			traverse_qual_expr(ex, (Expr *)lfirst(lc), strbuf);
+			i++;
+		}
+		stringbuffer_append(strbuf, ')');
+		return;
 	} else {
 		elog_node_display(ERROR, "qual expression not supported", expr, true);
 	}
