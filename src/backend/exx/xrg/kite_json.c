@@ -16,6 +16,7 @@
 #include "parser/parsetree.h"
 #include "optimizer/var.h"
 #include "optimizer/clauses.h"
+#include "nodes/nodeFuncs.h"
 
 #include "kite_extscan.h"
 #include "../util/xexpr_types.h"
@@ -30,6 +31,8 @@
 static char *setup_qual(kite_extscan_t *ex);
 
 static void traverse_qual(kite_extscan_t *ex, ExprState *exprstate, stringbuffer_t *strbuf);
+
+static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *strbuf);
 
 /**
  * Generate schema JSON
@@ -235,6 +238,53 @@ static char *setup_qual(kite_extscan_t *ex) {
 	return ret;
 }
 
+static void traverse_numeric_transform(kite_extscan_t *ex, FuncExpr *expr, stringbuffer_t *strbuf) {
+	Node *typmod = NULL;
+
+	Insist(IsA(expr, FuncExpr));
+	Insist(list_length(expr->args) >= 2);
+
+	typmod = (Node *) lsecond(expr->args);
+
+	if (IsA(typmod, Const) &&!((Const *) typmod)->constisnull)
+	{
+		Node       *source = (Node *) linitial(expr->args);
+		int32           old_typmod = exprTypmod(source);
+		int32           new_typmod = DatumGetInt32(((Const *) typmod)->constvalue);
+		int32           old_scale = (old_typmod - VARHDRSZ) & 0xffff;
+		int32           new_scale = (new_typmod - VARHDRSZ) & 0xffff;
+		int32           old_precision = (old_typmod - VARHDRSZ) >> 16 & 0xffff;
+		int32           new_precision = (new_typmod - VARHDRSZ) >> 16 & 0xffff;
+
+		/*
+		 * If new_typmod < VARHDRSZ, the destination is unconstrained; that's
+		 * always OK.  If old_typmod >= VARHDRSZ, the source is constrained,
+		 * and we're OK if the scale is unchanged and the precision is not
+		 * decreasing.  See further notes in function header comment.
+		 */
+		if (new_typmod >= VARHDRSZ && old_typmod >= VARHDRSZ) {
+			if (new_scale != old_scale) {
+				elog(ERROR, "numeric new scale != old scale");
+			}
+			if (new_precision < old_precision) {
+				elog(ERROR, "numeric new precision < old precision");
+			}
+		}
+
+		traverse_qual_expr(ex, (Expr *) linitial(expr->args), strbuf);
+		if (new_typmod >= (int32) VARHDRSZ) {
+			// new typmod
+			stringbuffer_append(strbuf, '(');
+			stringbuffer_append_int(strbuf, new_precision);
+			stringbuffer_append(strbuf, ',');
+			stringbuffer_append_int(strbuf, new_scale);
+			stringbuffer_append(strbuf, ')');
+		}
+	} else {
+		elog(ERROR, "numeric_transform 2nd argument is not Const");
+	}
+}
+
 /* traverse the Qual Expression */
 static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *strbuf) {
 
@@ -338,7 +388,9 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		int opcode = pg_func_to_op(fp->funcid);
 		if (opcode == -1) elog_node_display(LOG, "FuncExpr", fp, true);
 		Insist(opcode != -1);
-		if (opcode == XRG_OP_CAST) {
+		if (opcode == XRG_OP_NUMERIC_TRANSFORM) {
+			traverse_numeric_transform(ex, fp, strbuf);
+		} else if (opcode == XRG_OP_CAST) {
 			ListCell *l;
 			List *oplist = fp->args;
 			foreach (l, oplist) {

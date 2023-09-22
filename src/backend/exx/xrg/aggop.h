@@ -91,6 +91,7 @@ enum xrg_opexpr_t {
 	XRG_OP_ARRAY_CONTAINED,
 	XRG_OP_ARRAY_OVERLAP,
 	XRG_OP_ARRAY_LENGTH,
+	XRG_OP_NUMERIC_TRANSFORM,
 };
 
 static inline const char *xrg_opexpr_str(int32_t op) {
@@ -492,6 +493,8 @@ static inline int32_t pg_func_to_op(int32_t funcid) {
 		return XRG_OP_CAST;
 	case 2176: // array_length
 		return XRG_OP_ARRAY_LENGTH;
+	case 1703: // numeric transform
+		return XRG_OP_NUMERIC_TRANSFORM;
 	default:
 		/* unsupported */
 		return -1;
