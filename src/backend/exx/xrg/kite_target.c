@@ -29,6 +29,56 @@ static const char *aggfnoid_to_opstr(Oid aggfnoid) {
 }
 
 /* xexpr parsing functions */
+static void traverse_numeric_transform(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
+	Insist(xex_list_length(list) >= 2);
+	xex_object_t *obj = 0;
+	obj = xex_list_get(list, 0);
+	Insist(obj);
+	xex_list_t *funcexpr = xex_to_list(obj);
+	obj = xex_list_get(list, 1);
+	Insist(obj);
+	xex_list_t *typmod = xex_to_list(obj);
+
+    const char *type;
+    Oid consttype, constcollid;
+    int32_t consttypmod, constlen;
+    int8_t constbyval, constisnull;
+	int32_t new_typmod = 0;
+
+    int n = xex_list_length(typmod);
+    Insist(n == 8);
+
+    type = xex_list_get_string(typmod, 0); // type
+    Insist(type && strcmp(type, CONST_TYPE) == 0);
+
+    Insist(xex_list_get_uint32(typmod, 1, &consttype) == 0); // consttype
+
+    Insist(xex_list_get_int32(typmod, 2, &consttypmod) == 0); // consttypmod
+
+    Insist(xex_list_get_uint32(typmod, 3, &constcollid) == 0); // constcollid
+
+    Insist(xex_list_get_int32(typmod, 4, &constlen) == 0); // constlen
+
+    Insist(xex_list_get_int8(typmod, 5, &constbyval) == 0); // constbyval
+
+    Insist(xex_list_get_int8(typmod, 6, &constisnull) == 0); // constisnull
+
+    Insist(xex_list_get_int32(typmod, 7, &new_typmod) == 0); // constvalue
+
+	int32_t new_scale = (new_typmod - VARHDRSZ) & 0xffff;
+    int32_t new_precision = (new_typmod - VARHDRSZ) >> 16 & 0xffff;
+
+    traverse(funcexpr, tupdesc, strbuf, pgtargetlist);
+    if (new_typmod >= (int32) VARHDRSZ) {
+		// new typmod
+		stringbuffer_append(strbuf, '(');
+		stringbuffer_append_int(strbuf, new_precision);
+		stringbuffer_append(strbuf, ',');
+		stringbuffer_append_int(strbuf, new_scale);
+		stringbuffer_append(strbuf, ')');
+	}
+}
+
 static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *strbuf, xex_list_t *pgtargetlist) {
 	const char *type;
 	Oid funcid, funcresulttype, funccollid, inputcollid;
@@ -56,7 +106,9 @@ static void traverse_funcexpr(xex_list_t *list, TupleDesc tupdesc, stringbuffer_
 
 	int32_t op = pg_func_to_op(funcid);
 
-	if (op == XRG_OP_CAST) {
+	if (op == XRG_OP_NUMERIC_TRANSFORM) {
+		traverse_numeric_transform(args, tupdesc, strbuf, pgtargetlist);
+	} else if (op == XRG_OP_CAST) {
 		for (int i = 0; i < xex_list_length(args); i++) {
 			obj = xex_list_get(args, i);
 			Insist(obj);
