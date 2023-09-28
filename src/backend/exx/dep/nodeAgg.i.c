@@ -358,6 +358,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 			case 2142:  // min timestamp
 			case 2143:  // min timestamptz
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
@@ -379,6 +382,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 			case 2132:  // min integer
 			case 2138:  // min date
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
@@ -398,6 +404,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				[[fallthrough]];
 			case 2133: // min smallint
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
@@ -417,6 +426,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				[[fallthrough]];
 			case 2135: // min float4
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
@@ -436,6 +448,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				[[fallthrough]];
 			case 2136: // min float8
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
@@ -455,6 +470,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 				[[fallthrough]];
 			case 2146: // min numeric
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
@@ -478,6 +496,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 			case 2145: // min text
 			case 2245: // min bpchar
 				{
+					if (isnull) {
+						break;
+					}
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						pergroupstate->transValue = value;
 						pergroupstate->transValueIsNull = isnull; 
