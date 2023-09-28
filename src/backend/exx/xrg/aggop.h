@@ -640,6 +640,8 @@ static inline int32_t pg_agg_to_op(int32_t funcid) {
 		/* 2050, any arrray nyi */
 		/* 2244, bpchar, nyi */
 		/* 2797, tid, nyi */
+	case 2129: // text
+	case 2244: // bpchar
 		return XRG_OP_MAX;
 
 	case 2131: // PG_PROC_min_2131: /* int8 */
@@ -662,6 +664,8 @@ static inline int32_t pg_agg_to_op(int32_t funcid) {
 		/* 2051 is any array, nyi */
 		/* 2245 bpchar nyi */
 		/* 2798 tid nyi */
+	case 2145: // text
+	case 2245: // bpchar
 		return XRG_OP_MIN;
 
 	default:

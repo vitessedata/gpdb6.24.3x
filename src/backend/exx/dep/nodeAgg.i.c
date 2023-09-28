@@ -2,11 +2,13 @@
 #include "postgres.h"
 #include "access/relscan.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_collation.h"
 #include "executor/execdesc.h"
 #include "executor/nodeAgg.h"
 #include "utils/builtins.h" 
 #include "utils/memutils.h"
 #include "utils/array.h"
+#include "utils/builtins.h"
 #include "miscadmin.h"
 #include "exx/exx.h"
 #include "exx/exx_trans.h"
@@ -467,6 +469,30 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 						}
 					}
 
+				}
+				break;
+			case 2129: // max text
+			case 2244: // max bpchar
+				ismax = true;
+				[[fallthrough]];
+			case 2145: // min text
+			case 2245: // min bpchar
+				{
+					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
+						pergroupstate->transValue = value;
+						pergroupstate->transValueIsNull = isnull; 
+						pergroupstate->noTransValue = false;
+					} else if (!isnull) {
+						char *a = DatumGetCString(pergroupstate->transValue);
+						char *b = DatumGetCString(value);
+						int lena = VARSIZE(a);
+						int lenb = VARSIZE(b);
+						int ret = varstr_cmp(VARDATA(a), lena, VARDATA(b), lenb, C_COLLATION_OID);
+						//if ((ismax && a < b) || (!ismax && a > b)) {
+						if ((ismax && ret < 0) || (!ismax && ret > 0)) {
+							pergroupstate->transValue = value;
+						}
+					}
 				}
 				break;
 			default:
