@@ -509,21 +509,35 @@ static inline const char *pg_cast_to(int32_t funcid) {
      * reverse direction are assignment-only.
      */
     case 714:   // cast from int8 to int2
+		return PG_TYPE_INT2;
     case 480:   // cast from int8 to int4
+		return PG_TYPE_INT4;
     case 652:   // cast from int8 to float4
+		return PG_TYPE_FLOAT4;
     case 482:   // cast from int8 to float8
+		return PG_TYPE_FLOAT8;
     case 1781:  // cast from int8 to numeric
+		return PG_TYPE_NUMERIC;
     case 754:   // cast from int2 to int8
+		return PG_TYPE_INT8;
     case 313:   // cast from int2 to int4
+		return PG_TYPE_INT4;
     case 236:   // cast from int2 to float4
+		return PG_TYPE_FLOAT4;
     case 235:   // cast from int2 to float8
+		return PG_TYPE_FLOAT8;
     case 1782:  // cast from int2 to numeric
+		return PG_TYPE_NUMERIC;
     case 481:   // cast from int4 to int8
+		return PG_TYPE_INT8;
     case 314:   // cast from int4 to int2
+		return PG_TYPE_INT2;
     case 318:   // cast from int4 to float4
+		return PG_TYPE_FLOAT4;
     case 316:   // cast from int4 to float8
+		return PG_TYPE_FLOAT8;
     case 1740:  // cast from int4 to numeric
-		return NULL;
+		return PG_TYPE_NUMERIC;
     case 653:   // cast from float4 to int8  (explicit)
 		return PG_TYPE_INT8;
     case 238:   // cast from float4 to int2  (explicit)
@@ -531,7 +545,7 @@ static inline const char *pg_cast_to(int32_t funcid) {
     case 319:   // cast from float4 to int4  (explicit)
 		return PG_TYPE_INT4;
     case 311:   // cast from float4 to float8
-		return NULL;
+		return PG_TYPE_FLOAT8;
     case 1742:  // cast from float4 to numeric (explicit)
 		return PG_TYPE_NUMERIC;
     case 483:   // cast from float8 to int8 (explicit)

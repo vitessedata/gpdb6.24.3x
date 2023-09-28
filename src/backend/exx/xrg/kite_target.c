@@ -234,7 +234,7 @@ static void traverse_const(xex_list_t *list, TupleDesc tupdesc, stringbuffer_t *
 	case NUMERICOID:
 		stringbuffer_append(strbuf, '\'');
 		stringbuffer_append_string(strbuf, (char *)constvalue);
-		stringbuffer_append(strbuf, '\'');
+		stringbuffer_append_string(strbuf, "'::numeric");
 		break;
 	case INTERVALOID: // interval
 		stringbuffer_append_string(strbuf, "INTERVAL ");
