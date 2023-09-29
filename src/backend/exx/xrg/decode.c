@@ -450,13 +450,13 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 
 	// TODO: date, timestamp, numeric need further processing
 	if (ltyp == XRG_LTYP_ARRAY && ptyp == XRG_PTYP_BYTEA) {
-		xrg_array_header_t *ptr = (xrg_array_header_t *) xrg_bytea_ptr(data);
-		int sz = xrg_bytea_len(data);
-		//int16_t array_ptyp = xrg_array_ptyp(ptr);
-		int16_t array_ltyp = xrg_array_ltyp(ptr);
 		if (flag & XRG_FLAG_NULL) {
 			*pg_datum = 0;
 		} else {
+			xrg_array_header_t *ptr = (xrg_array_header_t *) xrg_bytea_ptr(data);
+			int sz = xrg_bytea_len(data);
+			//int16_t array_ptyp = xrg_array_ptyp(ptr);
+			int16_t array_ltyp = xrg_array_ltyp(ptr);
 
 			switch (array_ltyp) {
 			case XRG_LTYP_DATE:
