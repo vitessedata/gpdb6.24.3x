@@ -517,8 +517,9 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 						if ((ismax && ret < 0) || (!ismax && ret > 0)) {
 							// reuse the transValue if the memory buffer is big enough to hold the new value
 							if (VARSIZE_ANY(a) < VARSIZE_ANY(b)) {
-								char *vv = repalloc((void *) pergroupstate->transValue, VARSIZE_ANY(b));
+								char *vv = palloc(VARSIZE_ANY(b));
 								memcpy(vv, b, VARSIZE_ANY(b));
+								//pfree(a);  // free is expensive
 								pergroupstate->transValue = PointerGetDatum(vv);
 							} else {
 								memcpy(a, b, VARSIZE_ANY(b));
