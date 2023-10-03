@@ -515,9 +515,15 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 						int ret = varstr_cmp(VARDATA_ANY(a), lena, VARDATA_ANY(b), lenb, C_COLLATION_OID);
 						//if ((ismax && a < b) || (!ismax && a > b)) {
 						if ((ismax && ret < 0) || (!ismax && ret > 0)) {
-							char *vv = palloc(VARSIZE_ANY(b));
-							memcpy(vv, b, VARSIZE_ANY(b));
-							pergroupstate->transValue = PointerGetDatum(vv);
+							// reuse the transValue if the memory buffer is big enough to hold the new value
+							if (VARSIZE_ANY(a) < VARSIZE_ANY(b)) {
+								char *vv = repalloc((void *) pergroupstate->transValue, VARSIZE_ANY(b));
+								memcpy(vv, b, VARSIZE_ANY(b));
+								pergroupstate->transValue = PointerGetDatum(vv);
+							} else {
+								memcpy(a, b, VARSIZE_ANY(b));
+							}
+
 						}
 					}
 					MemoryContextSwitchTo(oldContext);
