@@ -502,21 +502,21 @@ exx_bclv_advance_aggregates(AggState *aggstate, AggStatePerGroup pergroup,
 					MemoryContext oldContext = MemoryContextSwitchTo(aggstate->tmpcontext->ecxt_per_tuple_memory);
 					if (pergroupstate->noTransValue || pergroupstate->transValueIsNull) {
 						char *v = (char *)DatumGetPointer(value);
-						char *vv = palloc(VARSIZE(v));
-						memcpy(vv, v, VARSIZE(v));
+						char *vv = palloc(VARSIZE_ANY(v));
+						memcpy(vv, v, VARSIZE_ANY(v));
 						pergroupstate->transValue = PointerGetDatum(vv);
 						pergroupstate->transValueIsNull = isnull; 
 						pergroupstate->noTransValue = false;
 					} else if (!isnull) {
 						char *a = (char *)DatumGetPointer(pergroupstate->transValue);
 						char *b = (char *)DatumGetPointer(value);
-						int lena = VARSIZE(a)-4;
-						int lenb = VARSIZE(b)-4;
-						int ret = varstr_cmp(VARDATA(a), lena, VARDATA(b), lenb, C_COLLATION_OID);
+						int lena = VARSIZE_ANY_EXHDR(a);
+						int lenb = VARSIZE_ANY_EXHDR(b);
+						int ret = varstr_cmp(VARDATA_ANY(a), lena, VARDATA_ANY(b), lenb, C_COLLATION_OID);
 						//if ((ismax && a < b) || (!ismax && a > b)) {
 						if ((ismax && ret < 0) || (!ismax && ret > 0)) {
-							char *vv = palloc(VARSIZE(b));
-							memcpy(vv, b, VARSIZE(b));
+							char *vv = palloc(VARSIZE_ANY(b));
+							memcpy(vv, b, VARSIZE_ANY(b));
 							pergroupstate->transValue = PointerGetDatum(vv);
 						}
 					}
