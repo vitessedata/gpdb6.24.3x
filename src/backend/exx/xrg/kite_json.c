@@ -501,10 +501,46 @@ static void traverse_qual_expr(kite_extscan_t *ex, Expr *expr, stringbuffer_t *s
 		int32_t op = pg_proc_to_op(sp->opfuncid);
 		switch (op) {
 		case XRG_OP_EQ:
-			stringbuffer_append_string(strbuf, " = ANY ");
+			if (sp->useOr) {
+				stringbuffer_append_string(strbuf, " = ANY ");
+			} else {
+				stringbuffer_append_string(strbuf, " = ALL ");
+			}
 			break;
 		case XRG_OP_NE:
-			stringbuffer_append_string(strbuf, " != ALL ");
+			if (sp->useOr) {
+				stringbuffer_append_string(strbuf, " != ANY ");
+			} else {
+				stringbuffer_append_string(strbuf, " != ALL ");
+			}
+			break;
+		case XRG_OP_LT:
+			if (sp->useOr) {
+				stringbuffer_append_string(strbuf, " < ANY ");
+			} else {
+				stringbuffer_append_string(strbuf, " < ALL ");
+			}
+			break;
+		case XRG_OP_LE:
+			if (sp->useOr) {
+				stringbuffer_append_string(strbuf, " <= ANY ");
+			} else {
+				stringbuffer_append_string(strbuf, " <= ALL ");
+			}
+			break;
+		case XRG_OP_GT:
+			if (sp->useOr) {
+				stringbuffer_append_string(strbuf, " > ANY ");
+			} else {
+				stringbuffer_append_string(strbuf, " > ALL ");
+			}
+			break;
+		case XRG_OP_GE:
+			if (sp->useOr) {
+				stringbuffer_append_string(strbuf, " >= ANY ");
+			} else {
+				stringbuffer_append_string(strbuf, " >= ALL ");
+			}
 			break;
 		default:
 			elog(ERROR, "ScalarArrayOpExpr: Invalid operation. (op = %d, funcid = %d)", sp->opno, sp->opfuncid);
