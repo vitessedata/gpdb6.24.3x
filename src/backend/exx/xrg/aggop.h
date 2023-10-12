@@ -231,6 +231,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 390:  // PG_PROC_array_ne:
 		return XRG_OP_NE;
 
+	case 56:   // PG_PROC_boollt:
 	case 1246: // PG_PROC_charlt:
 	case 64:   // PG_PROC_int2lt:
 	case 160:  // PG_PROC_int24lt:
@@ -256,6 +257,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 391:  // PG_PROC_array_lt:
 		return XRG_OP_LT;
 
+	case 1691: // PG_PROC_boolle:
 	case 72:   // PG_PROC_charle:
 	case 148:  // PG_PROC_int2le:
 	case 166:  // PG_PROC_int24le:
@@ -281,6 +283,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 393:  // PG_PROC_array_le:
 		return XRG_OP_LE;
 
+	case 57:   // PG_PROC_boolgt:
 	case 73:   // PG_PROC_chargt:
 	case 146:  // PG_PROC_int2gt:
 	case 162:  // PG_PROC_int24gt:
@@ -306,6 +309,7 @@ static inline int32_t pg_proc_to_op(int32_t funcid) {
 	case 392:  // PG_PROC_array_gt:
 		return XRG_OP_GT;
 
+	case 1692: // PG_PROC_boolge:
 	case 74:   // PG_PROC_charge:
 	case 151:  // PG_PROC_int2ge:
 	case 168:  // PG_PROC_int24ge:
