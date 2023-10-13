@@ -386,19 +386,19 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 		}
 		return 0;
 	case XRG_LTYP_DATE: {
-		*pg_datum = (flag & XRG_FLAG_NULL) ? 0 : decode_date(data);
+		*pg_datum = ((flag & XRG_FLAG_NULL) != 0) ? 0 : decode_date(data);
 	}
 		return 0;
 	case XRG_LTYP_TIME: {
-		*pg_datum = (flag & XRG_FLAG_NULL) ? 0 : decode_time(data);
+		*pg_datum = ((flag & XRG_FLAG_NULL) != 0) ? 0 : decode_time(data);
 	}
 		return 0;
 	case XRG_LTYP_TIMESTAMP: {
-		*pg_datum = (flag & XRG_FLAG_NULL) ? 0 : decode_timestamp(data);
+		*pg_datum = ((flag & XRG_FLAG_NULL) != 0) ? 0 : decode_timestamp(data);
 	}
 		return 0;
 	case XRG_LTYP_INTERVAL: {
-		*pg_datum = (flag & XRG_FLAG_NULL) ? 0 : PointerGetDatum((__int128_t *)data);
+		*pg_datum = ((flag & XRG_FLAG_NULL) != 0) ? 0 : PointerGetDatum((__int128_t *)data);
 	}
 		return 0;
 	case XRG_LTYP_DECIMAL:
@@ -439,7 +439,7 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 
 	if (ltyp == XRG_LTYP_STRING && ptyp == XRG_PTYP_BYTEA) {
 		int sz = xrg_bytea_len(data);
-		if (flag & XRG_FLAG_NULL) {
+		if ((flag & XRG_FLAG_NULL) != 0) {
 			*pg_datum = 0;
 		} else {
 			SET_VARSIZE(data, sz + VARHDRSZ);
@@ -450,7 +450,7 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 
 	// TODO: date, timestamp, numeric need further processing
 	if (ltyp == XRG_LTYP_ARRAY && ptyp == XRG_PTYP_BYTEA) {
-		if (flag & XRG_FLAG_NULL) {
+		if ((flag & XRG_FLAG_NULL) != 0) {
 			*pg_datum = 0;
 		} else {
 			xrg_array_header_t *ptr = (xrg_array_header_t *) xrg_bytea_ptr(data);
