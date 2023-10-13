@@ -353,6 +353,10 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 
 	// data in iter->value[idx] and iter->flag[idx] and iter->attrs[idx].ptyp
 	*pg_isnull = (flag & XRG_FLAG_NULL);
+	if (*pg_isnull) {
+		*pg_datum = 0;
+		return 0;
+	}
 
 	switch (ltyp) {
 	case XRG_LTYP_NONE:
