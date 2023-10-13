@@ -438,10 +438,10 @@ int decode_var(struct kite_target_t *tgt, xrg_iter_t *iter, Datum *pg_datum, boo
 	}
 
 	if (ltyp == XRG_LTYP_STRING && ptyp == XRG_PTYP_BYTEA) {
-		int sz = xrg_bytea_len(data);
 		if ((flag & XRG_FLAG_NULL) != 0) {
 			*pg_datum = 0;
 		} else {
+			int sz = xrg_bytea_len(data);
 			SET_VARSIZE(data, sz + VARHDRSZ);
 			*pg_datum = PointerGetDatum(data);
 		}
